@@ -106,9 +106,3 @@ CREATE INDEX idx_product_type_attributes_attribute_id ON product_type_attributes
 CREATE INDEX idx_categories_parent_id ON categories(parent_id);
 CREATE INDEX idx_categories_slug ON categories(slug);
 
--- Create migration tracking table
-CREATE TABLE _migrations (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL UNIQUE,
-    executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
