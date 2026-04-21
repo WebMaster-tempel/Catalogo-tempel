@@ -1,4 +1,4 @@
-import { Router, Response, NextFunction, Request } from 'express';
+import { Router, Response, NextFunction } from 'express';
 import multer from 'multer';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
