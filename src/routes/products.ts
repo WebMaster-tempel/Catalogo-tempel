@@ -2,7 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { db } from '../database/connection';
 import { ProductService } from '../services/ProductService';
 import { apiKeyMiddleware, AuthRequest } from '../middleware/auth';
-import { ApiError, errorHandler } from '../middleware/errorHandler';
+import { ApiError } from '../middleware/errorHandler';
 import {
   createProductSchema,
   updateProductSchema,
