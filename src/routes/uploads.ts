@@ -1,22 +1,26 @@
-import { Router, Response, NextFunction } from 'express';
+import { Router, Response, NextFunction, Request } from 'express';
 import multer from 'multer';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { apiKeyMiddleware, AuthRequest } from '../middleware/auth';
 
+interface UploadRequest extends AuthRequest {
+  file?: Express.Multer.File;
+}
+
 const router = Router();
 
 const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => {
+  destination: (_req: any, _file: any, cb: any) => {
     cb(null, path.join(process.cwd(), 'uploads'));
   },
-  filename: (_req, file, cb) => {
+  filename: (_req: any, file: any, cb: any) => {
     const ext = path.extname(file.originalname);
     cb(null, `${uuidv4()}${ext}`);
   },
 });
 
-const fileFilter = (_req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+const fileFilter = (_req: any, file: any, cb: any) => {
   const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'];
   if (allowed.includes(file.mimetype)) {
     cb(null, true);
@@ -31,7 +35,7 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
 });
 
-router.post('/', apiKeyMiddleware, upload.single('file'), (req: AuthRequest, res: Response, next: NextFunction) => {
+router.post('/', apiKeyMiddleware, upload.single('file'), (req: UploadRequest, res: Response, next: NextFunction) => {
   try {
     if (!req.file) {
       res.status(400).json({ error: 'NO_FILE', message: 'No file provided' });
