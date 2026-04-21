@@ -1,6 +1,10 @@
 node_modules/
 dist/
 .env
+uploads/
+admin/node_modules/
+admin/dist/
+admin/.env
 .env.local
 .DS_Store
 *.log

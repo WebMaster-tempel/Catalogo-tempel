@@ -1,0 +1,165 @@
+import { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
+import { productsApi, categoriesApi, productTypesApi } from '../services/api';
+import { Product, Category, ProductType, PaginationMeta } from '../types';
+import Pagination from '../components/Pagination';
+import ConfirmDialog from '../components/ConfirmDialog';
+
+export default function ProductList() {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [meta, setMeta] = useState<PaginationMeta>({ page: 1, per_page: 20, total: 0, total_pages: 0 });
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [productTypes, setProductTypes] = useState<ProductType[]>([]);
+  const [search, setSearch] = useState('');
+  const [categoryId, setCategoryId] = useState('');
+  const [typeId, setTypeId] = useState('');
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [error, setError] = useState('');
+
+  const fetchProducts = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const params: Record<string, string> = { page: String(page), per_page: '20' };
+      if (search) params.search = search;
+      if (categoryId) params.category_id = categoryId;
+      if (typeId) params.product_type_id = typeId;
+
+      const res = await productsApi.list(params);
+      setProducts(res.data);
+      setMeta(res.meta.pagination);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Error cargando productos');
+    } finally {
+      setLoading(false);
+    }
+  }, [page, search, categoryId, typeId]);
+
+  useEffect(() => {
+    fetchProducts();
+  }, [fetchProducts]);
+
+  useEffect(() => {
+    Promise.all([categoriesApi.list(), productTypesApi.list()]).then(([cat, types]) => {
+      setCategories(cat.data);
+      setProductTypes(types.data);
+    });
+  }, []);
+
+  async function handleDelete() {
+    if (!deleteId) return;
+    try {
+      await productsApi.delete(deleteId);
+      setDeleteId(null);
+      fetchProducts();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Error al eliminar');
+    }
+  }
+
+  function handleSearch(e: React.FormEvent) {
+    e.preventDefault();
+    setPage(1);
+    fetchProducts();
+  }
+
+  return (
+    <div>
+      <div className="page-header">
+        <h1>Productos</h1>
+        <Link to="/products/new" className="btn btn-primary">+ Nuevo producto</Link>
+      </div>
+
+      <form className="filters" onSubmit={handleSearch}>
+        <input
+          type="text"
+          placeholder="Buscar por nombre..."
+          value={search}
+          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+        />
+        <select value={categoryId} onChange={(e) => { setCategoryId(e.target.value); setPage(1); }}>
+          <option value="">Todas las categorías</option>
+          {categories.map((c) => (
+            <option key={c.id} value={c.id}>{c.name}</option>
+          ))}
+        </select>
+        <select value={typeId} onChange={(e) => { setTypeId(e.target.value); setPage(1); }}>
+          <option value="">Todos los tipos</option>
+          {productTypes.map((t) => (
+            <option key={t.id} value={t.id}>{t.name}</option>
+          ))}
+        </select>
+        <button type="submit" className="btn">Buscar</button>
+      </form>
+
+      {error && <p className="error">{error}</p>}
+
+      {loading ? (
+        <p className="loading">Cargando...</p>
+      ) : (
+        <>
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Imagen</th>
+                <th>Nombre</th>
+                <th>Tipo</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {products.length === 0 ? (
+                <tr><td colSpan={5} className="empty">No hay productos</td></tr>
+              ) : (
+                products.map((p) => {
+                  const type = productTypes.find((t) => t.id === p.product_type_id);
+                  const mainMedia = p.media?.find((m) => m.type === 'image');
+                  return (
+                    <tr key={p.id}>
+                      <td>
+                        {mainMedia ? (
+                          <img src={mainMedia.url} alt={p.name} className="table-thumb" />
+                        ) : (
+                          <div className="no-image">Sin imagen</div>
+                        )}
+                      </td>
+                      <td>
+                        <strong>{p.name}</strong>
+                        {p.description && <p className="text-muted">{p.description.slice(0, 80)}...</p>}
+                      </td>
+                      <td>{type?.name || '—'}</td>
+                      <td>
+                        <span className={`badge badge-${p.status}`}>{p.status}</span>
+                      </td>
+                      <td>
+                        <div className="actions">
+                          <Link to={`/products/${p.id}`} className="btn btn-sm">Ver</Link>
+                          <Link to={`/products/${p.id}/edit`} className="btn btn-sm btn-secondary">Editar</Link>
+                          <button className="btn btn-sm btn-danger" onClick={() => setDeleteId(p.id)}>
+                            Eliminar
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+          <Pagination meta={meta} onChange={setPage} />
+        </>
+      )}
+
+      {deleteId && (
+        <ConfirmDialog
+          message="¿Eliminar este producto? Esta acción no se puede deshacer."
+          onConfirm={handleDelete}
+          onCancel={() => setDeleteId(null)}
+        />
+      )}
+    </div>
+  );
+}
