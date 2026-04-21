@@ -1,0 +1,199 @@
+import { IDatabase } from 'pg-promise';
+import { BaseRepository } from './BaseRepository';
+import { Product, QueryOptions, PaginationMeta } from '../types';
+
+export class ProductRepository extends BaseRepository {
+  constructor(db: IDatabase<any>) {
+    super(db, 'products');
+  }
+
+  async findBySlug(slug: string): Promise<Product | null> {
+    return this.db.oneOrNone('SELECT * FROM products WHERE slug = $1', [slug]);
+  }
+
+  async create(data: Omit<Product, 'id' | 'created_at' | 'updated_at'>): Promise<Product> {
+    const result = await this.db.one(
+      `INSERT INTO products (name, slug, description, product_type_id, status, main_image_id)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING *`,
+      [data.name, data.slug, data.description, data.product_type_id, data.status, data.main_image_id]
+    );
+    return result;
+  }
+
+  async update(id: string, data: Partial<Product>): Promise<Product> {
+    const fields = [];
+    const values = [];
+    let paramIndex = 1;
+
+    Object.entries(data).forEach(([key, value]) => {
+      if (value !== undefined && key !== 'id' && key !== 'created_at') {
+        fields.push(`${key} = $${paramIndex}`);
+        values.push(value);
+        paramIndex++;
+      }
+    });
+
+    if (fields.length === 0) {
+      return this.db.one('SELECT * FROM products WHERE id = $1', [id]);
+    }
+
+    fields.push(`updated_at = $${paramIndex}`);
+    values.push(new Date());
+    values.push(id);
+
+    return this.db.one(
+      `UPDATE products SET ${fields.join(', ')} WHERE id = $${paramIndex + 1} RETURNING *`,
+      values
+    );
+  }
+
+  async list(options: QueryOptions): Promise<{ data: Product[]; meta: PaginationMeta }> {
+    const page = options.page || 1;
+    const perPage = options.per_page || 20;
+    const offset = (page - 1) * perPage;
+
+    let where = [];
+    let params: any[] = [];
+    let paramIndex = 1;
+
+    if (options.search) {
+      where.push(`(name ILIKE $${paramIndex} OR description ILIKE $${paramIndex})`);
+      params.push(`%${options.search}%`);
+      paramIndex++;
+    }
+
+    if (options.product_type_id) {
+      where.push(`product_type_id = $${paramIndex}`);
+      params.push(options.product_type_id);
+      paramIndex++;
+    }
+
+    if (options.status) {
+      where.push(`status = $${paramIndex}`);
+      params.push(options.status);
+      paramIndex++;
+    }
+
+    if (options.category_id) {
+      where.push(`id IN (SELECT product_id FROM product_categories WHERE category_id = $${paramIndex})`);
+      params.push(options.category_id);
+      paramIndex++;
+    }
+
+    const whereClause = where.length > 0 ? `WHERE ${where.join(' AND ')}` : '';
+
+    const countResult = await this.db.one(
+      `SELECT COUNT(*) as total FROM products ${whereClause}`,
+      params
+    );
+    const total = parseInt(countResult.total, 10);
+
+    const data = await this.db.any(
+      `SELECT * FROM products ${whereClause} ORDER BY created_at DESC LIMIT $${paramIndex} OFFSET $${
+        paramIndex + 1
+      }`,
+      [...params, perPage, offset]
+    );
+
+    return {
+      data,
+      meta: {
+        page,
+        per_page: perPage,
+        total,
+        total_pages: Math.ceil(total / perPage),
+      },
+    };
+  }
+
+  async listWithDynamicFilters(options: QueryOptions): Promise<{ data: any[]; meta: PaginationMeta }> {
+    const page = options.page || 1;
+    const perPage = options.per_page || 20;
+    const offset = (page - 1) * perPage;
+
+    let where = [];
+    let params: any[] = [];
+    let paramIndex = 1;
+
+    if (options.search) {
+      where.push(`p.name ILIKE $${paramIndex} OR p.description ILIKE $${paramIndex}`);
+      params.push(`%${options.search}%`);
+      paramIndex++;
+    }
+
+    if (options.product_type_id) {
+      where.push(`p.product_type_id = $${paramIndex}`);
+      params.push(options.product_type_id);
+      paramIndex++;
+    }
+
+    if (options.status) {
+      where.push(`p.status = $${paramIndex}`);
+      params.push(options.status);
+      paramIndex++;
+    }
+
+    if (options.category_id) {
+      where.push(
+        `p.id IN (SELECT product_id FROM product_categories WHERE category_id = $${paramIndex})`
+      );
+      params.push(options.category_id);
+      paramIndex++;
+    }
+
+    // Dynamic attribute filters
+    if (options.filters) {
+      Object.entries(options.filters).forEach(([key, value]) => {
+        where.push(`pav.attributes_json->>'${key.replace(/'/g, "''")}' = $${paramIndex}`);
+        params.push(String(value));
+        paramIndex++;
+      });
+    }
+
+    const whereClause = where.length > 0 ? `WHERE ${where.join(' AND ')}` : '';
+
+    const countResult = await this.db.one(
+      `SELECT COUNT(*) as total FROM products p LEFT JOIN product_attribute_values pav ON p.id = pav.product_id ${whereClause}`,
+      params
+    );
+    const total = parseInt(countResult.total, 10);
+
+    const data = await this.db.any(
+      `SELECT p.*, pav.attributes_json FROM products p
+       LEFT JOIN product_attribute_values pav ON p.id = pav.product_id
+       ${whereClause}
+       ORDER BY p.created_at DESC
+       LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`,
+      [...params, perPage, offset]
+    );
+
+    return {
+      data,
+      meta: {
+        page,
+        per_page: perPage,
+        total,
+        total_pages: Math.ceil(total / perPage),
+      },
+    };
+  }
+
+  async findFullProduct(id: string): Promise<any> {
+    return this.db.oneOrNone(
+      `SELECT
+         p.*,
+         pav.attributes_json,
+         jsonb_agg(DISTINCT jsonb_build_object('id', c.id, 'name', c.name, 'slug', c.slug)) FILTER (WHERE c.id IS NOT NULL) as categories,
+         jsonb_agg(DISTINCT jsonb_build_object('id', m.id, 'type', m.type, 'url', m.url, 'title', m.title, 'order', m."order")) FILTER (WHERE m.id IS NOT NULL) as media
+       FROM products p
+       LEFT JOIN product_attribute_values pav ON p.id = pav.product_id
+       LEFT JOIN product_categories pc ON p.id = pc.product_id
+       LEFT JOIN categories c ON pc.category_id = c.id
+       LEFT JOIN media m ON p.id = m.product_id
+       WHERE p.id = $1
+       GROUP BY p.id, pav.id`,
+      [id]
+    );
+  }
+}
