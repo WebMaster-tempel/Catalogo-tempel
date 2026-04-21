@@ -1,6 +1,5 @@
 import { ProductRepository } from '../repositories/ProductRepository';
 import { ProductAttributeValuesRepository } from '../repositories/ProductAttributeValuesRepository';
-import { AttributeRepository } from '../repositories/AttributeRepository';
 import { ProductTypeRepository } from '../repositories/ProductTypeRepository';
 import { MediaRepository } from '../repositories/MediaRepository';
 import { CategoryRepository } from '../repositories/CategoryRepository';
@@ -10,7 +9,6 @@ import { IDatabase } from 'pg-promise';
 export class ProductService {
   private productRepo: ProductRepository;
   private attributeValuesRepo: ProductAttributeValuesRepository;
-  private attributeRepo: AttributeRepository;
   private productTypeRepo: ProductTypeRepository;
   private mediaRepo: MediaRepository;
   private categoryRepo: CategoryRepository;
@@ -20,7 +18,6 @@ export class ProductService {
     this.db = db;
     this.productRepo = new ProductRepository(db);
     this.attributeValuesRepo = new ProductAttributeValuesRepository(db);
-    this.attributeRepo = new AttributeRepository(db);
     this.productTypeRepo = new ProductTypeRepository(db);
     this.mediaRepo = new MediaRepository(db);
     this.categoryRepo = new CategoryRepository(db);
@@ -32,7 +29,7 @@ export class ProductService {
       category_ids?: string[];
     }
   ): Promise<any> {
-    return this.db.tx(async (t) => {
+    return this.db.tx(async () => {
       const { attributes, category_ids, ...productData } = data;
 
       // Validate attributes match product type
@@ -62,7 +59,7 @@ export class ProductService {
       category_ids?: string[];
     }
   ): Promise<any> {
-    return this.db.tx(async (t) => {
+    return this.db.tx(async () => {
       const { attributes, category_ids, ...productData } = data;
 
       // Validate attributes if provided
@@ -74,7 +71,7 @@ export class ProductService {
       }
 
       // Update product
-      const product = await this.productRepo.update(id, productData);
+      await this.productRepo.update(id, productData);
 
       // Update attribute values if provided
       if (attributes) {
