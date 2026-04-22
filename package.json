@@ -33,6 +33,7 @@
     "@types/multer": "^1.4.11",
     "@types/cors": "^2.8.17",
     "@types/helmet": "^4.0.0",
+    "@types/pg": "^8.10.9",
     "typescript": "^5.3.3",
     "ts-node": "^10.9.2"
   }
