@@ -15,9 +15,11 @@ export class CategoryFeatureRepository extends BaseRepository {
   }
 
   async findByType(categoryId: string, type: string): Promise<CategoryFeature[]> {
+    const validTypes = ['application', 'characteristic'];
+    const validType = validTypes.includes(type) ? type : 'application';
     return this.db.any(
       'SELECT * FROM category_features WHERE category_id = $1 AND type = $2 ORDER BY "order"',
-      [categoryId, type]
+      [categoryId, validType]
     );
   }
 

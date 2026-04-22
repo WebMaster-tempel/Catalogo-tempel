@@ -18,12 +18,17 @@ export class CategoryFeatureService {
   }
 
   async createFeature(categoryId: string, type: string, label: string, order?: number): Promise<CategoryFeature> {
+    const validTypes: Array<'application' | 'characteristic'> = ['application', 'characteristic'];
+    const validType = validTypes.includes(type as 'application' | 'characteristic')
+      ? (type as 'application' | 'characteristic')
+      : 'application';
+
     const features = await this.repo.findByCategoryId(categoryId);
-    const maxOrder = features.filter((f) => f.type === type).length;
+    const maxOrder = features.filter((f) => f.type === validType).length;
 
     return this.repo.create({
       category_id: categoryId,
-      type,
+      type: validType,
       label,
       order: order ?? maxOrder + 1,
     });
@@ -41,3 +46,4 @@ export class CategoryFeatureService {
     return this.repo.reorder(categoryId, featureIds);
   }
 }
+
