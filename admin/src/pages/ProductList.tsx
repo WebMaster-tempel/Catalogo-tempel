@@ -126,7 +126,7 @@ export default function ProductList() {
                 <tr>
                   <th>Imagen</th>
                   <th>Nombre</th>
-                  <th>Tipo</th>
+                  <th>Categoría</th>
                   <th>Estado</th>
                   <th>Acciones</th>
                 </tr>
@@ -136,8 +136,8 @@ export default function ProductList() {
                   <tr><td colSpan={5} className="empty">No hay productos</td></tr>
                 ) : (
                   products.map((p) => {
-                    const type = productTypes.find((t) => t.id === p.product_type_id);
                     const mainMedia = p.media?.find((m) => m.type === 'image');
+                    const productCategories = p.categories || [];
                     return (
                       <tr key={p.id}>
                         <td>
@@ -151,7 +151,14 @@ export default function ProductList() {
                           <strong>{p.name}</strong>
                           {p.description && <p className="text-muted">{p.description.slice(0, 80)}...</p>}
                         </td>
-                        <td>{type?.name || '—'}</td>
+                        <td>
+                          {productCategories.length > 0
+                            ? productCategories.map((c) => (
+                                <span key={c.id} className="tag" style={{ marginRight: '4px', fontSize: '11px' }}>{c.name}</span>
+                              ))
+                            : <span style={{ color: '#999' }}>—</span>
+                          }
+                        </td>
                         <td>
                           <span className={`badge badge-${p.status}`}>{p.status}</span>
                         </td>
@@ -173,8 +180,8 @@ export default function ProductList() {
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '1.5rem', marginBottom: '1.5rem' }}>
               {products.map((p) => {
-                const type = productTypes.find((t) => t.id === p.product_type_id);
                 const mainMedia = p.media?.find((m) => m.type === 'image');
+                const productCategories = p.categories || [];
                 return (
                   <div
                     key={p.id}
@@ -211,7 +218,9 @@ export default function ProductList() {
                         {p.description?.slice(0, 60)}...
                       </p>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                        <small style={{ color: '#999' }}>{type?.name}</small>
+                        <small style={{ color: '#999' }}>
+                          {productCategories.length > 0 ? productCategories.map((c) => c.name).join(', ') : '—'}
+                        </small>
                         <span className={`badge badge-${p.status}`}>{p.status}</span>
                       </div>
                       <div style={{ display: 'flex', gap: '0.25rem' }}>

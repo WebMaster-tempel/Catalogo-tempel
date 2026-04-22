@@ -90,9 +90,23 @@ export class ProductRepository extends BaseRepository {
     const total = parseInt(countResult.total, 10);
 
     const data = await this.db.any(
-      `SELECT * FROM products ${whereClause} ORDER BY created_at DESC LIMIT $${paramIndex} OFFSET $${
-        paramIndex + 1
-      }`,
+      `SELECT p.*,
+         COALESCE(
+           (SELECT jsonb_agg(jsonb_build_object('id', c.id, 'name', c.name, 'slug', c.slug))
+            FROM product_categories pc
+            JOIN categories c ON pc.category_id = c.id
+            WHERE pc.product_id = p.id), '[]'::jsonb
+         ) AS categories,
+         COALESCE(
+           (SELECT jsonb_agg(jsonb_build_object('id', m.id, 'type', m.type, 'url', m.url, 'order', m."order")
+                             ORDER BY m."order")
+            FROM media m
+            WHERE m.product_id = p.id), '[]'::jsonb
+         ) AS media
+       FROM products p
+       ${whereClause}
+       ORDER BY p.name ASC
+       LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`,
       [...params, perPage, offset]
     );
 
