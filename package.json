@@ -7,6 +7,7 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "dev": "ts-node src/index.ts",
+    "db:reset": "ts-node scripts/reset-db.ts",
     "db:migrate": "ts-node src/migrations/runner.ts",
     "db:seed": "ts-node src/seeds/index.ts",
     "lint": "eslint src --ext .ts"
