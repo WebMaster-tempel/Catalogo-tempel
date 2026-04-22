@@ -28,10 +28,20 @@ export default function ProductList() {
       if (categoryId) params.category_id = categoryId;
       if (typeId) params.product_type_id = typeId;
 
+      console.log('[ProductList] Fetching products with params:', params);
       const res = await productsApi.list(params);
+      console.log('[ProductList] API response:', {
+        total: res.meta?.pagination?.total,
+        returned: res.data?.length,
+        firstProduct: res.data?.[0],
+        pagination: res.meta?.pagination,
+        rawResponse: res,
+      });
       setProducts(res.data);
       setMeta(res.meta.pagination);
+      console.log('[ProductList] Products set:', res.data?.length, 'items');
     } catch (err: unknown) {
+      console.error('[ProductList] Error fetching products:', err);
       setError(err instanceof Error ? err.message : 'Error cargando productos');
     } finally {
       setLoading(false);
