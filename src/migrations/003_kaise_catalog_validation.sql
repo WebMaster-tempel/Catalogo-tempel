@@ -1,7 +1,7 @@
 -- =============================================================================
 -- KAISE CATALOG - VALIDATION SCRIPT (Part 1)
--- Loads 3 battery categories + 5 sample products to validate the structure.
--- Once validated, the full catalog script will populate all 58+ models.
+-- Loads 3 battery categories, attributes, and product types.
+-- Full product catalog populated by migration 009.
 -- =============================================================================
 
 BEGIN;
@@ -107,82 +107,5 @@ INSERT INTO categories (id, name, slug, description, parent_id,
      TRUE,
      'Rejillas de aleación Pb-Sn-Ca de alta densidad. Diseñada para aplicaciones críticas de larga duración.');
 
--- -----------------------------------------------------------------------------
--- 6. SAMPLE PRODUCTS (5 for validation — 1 from each range/type)
--- -----------------------------------------------------------------------------
-INSERT INTO products (id, name, slug, description, product_type_id, status) VALUES
-
-    ('a11c1e00-3000-4000-8000-000000000001',
-     'KBLI127',
-     'kbli127',
-     'Batería LiFePO4 12.8V 7Ah — pequeño formato, terminal F1',
-     'a11c1e00-0000-4000-8000-000000000001',
-     'published'),
-
-    ('a11c1e00-3000-4000-8000-000000000002',
-     'KBLI12100',
-     'kbli12100',
-     'Batería LiFePO4 12.8V 100Ah — formato medio, terminal M8',
-     'a11c1e00-0000-4000-8000-000000000001',
-     'published'),
-
-    ('a11c1e00-3000-4000-8000-000000000003',
-     'KBLI48100',
-     'kbli48100',
-     'Batería LiFePO4 51.2V 100Ah — alto voltaje, terminal M8',
-     'a11c1e00-0000-4000-8000-000000000001',
-     'published'),
-
-    ('a11c1e00-3000-4000-8000-000000000004',
-     'KB1270',
-     'kb1270',
-     'Batería VRLA AGM 12V 7Ah — Standard, terminal F1',
-     'a11c1e00-0000-4000-8000-000000000001',
-     'published'),
-
-    ('a11c1e00-3000-4000-8000-000000000005',
-     'KBL1272',
-     'kbl1272',
-     'Batería VRLA AGM 12V 7,2Ah Long Life (10 años) — terminal F1/F2',
-     'a11c1e00-0000-4000-8000-000000000001',
-     'published');
-
--- -----------------------------------------------------------------------------
--- 7. PRODUCT ATTRIBUTE VALUES (JSONB)
--- -----------------------------------------------------------------------------
-INSERT INTO product_attribute_values (id, product_id, attributes_json) VALUES
-
-    ('a11c1e00-5000-4000-8000-000000000001',
-     'a11c1e00-3000-4000-8000-000000000001',
-     '{"model_code":"KBLI127","voltage":12.8,"capacity":7,"length":151,"width":65,"height":94,"total_height":99,"terminal_type":"F1","weight":1.1}'),
-
-    ('a11c1e00-5000-4000-8000-000000000002',
-     'a11c1e00-3000-4000-8000-000000000002',
-     '{"model_code":"KBLI12100","voltage":12.8,"capacity":100,"length":330,"width":172,"height":215,"total_height":223,"terminal_type":"M8","weight":12.0}'),
-
-    ('a11c1e00-5000-4000-8000-000000000003',
-     'a11c1e00-3000-4000-8000-000000000003',
-     '{"model_code":"KBLI48100","voltage":51.2,"capacity":100,"length":450,"width":442,"height":223,"total_height":223,"terminal_type":"M8","weight":49.5}'),
-
-    ('a11c1e00-5000-4000-8000-000000000004',
-     'a11c1e00-3000-4000-8000-000000000004',
-     '{"model_code":"KB1270","voltage":12,"capacity":7.0,"capacity_rate":"C20","length":151,"width":65,"height":94,"total_height":100,"terminal_type":"F1","weight":1.9}'),
-
-    ('a11c1e00-5000-4000-8000-000000000005',
-     'a11c1e00-3000-4000-8000-000000000005',
-     '{"model_code":"KBL1272","voltage":12,"capacity":7.2,"capacity_rate":"C10","length":151,"width":65,"height":94,"total_height":100,"terminal_type":"F1/F2","weight":2.4}');
-
--- -----------------------------------------------------------------------------
--- 8. ASSIGN PRODUCTS TO CATEGORIES
--- -----------------------------------------------------------------------------
-INSERT INTO product_categories (product_id, category_id) VALUES
-    -- KAISE LITIO
-    ('a11c1e00-3000-4000-8000-000000000001', 'a11c1e00-1000-4000-8000-000000000001'),
-    ('a11c1e00-3000-4000-8000-000000000002', 'a11c1e00-1000-4000-8000-000000000001'),
-    ('a11c1e00-3000-4000-8000-000000000003', 'a11c1e00-1000-4000-8000-000000000001'),
-    -- KAISE STANDARD
-    ('a11c1e00-3000-4000-8000-000000000004', 'a11c1e00-1000-4000-8000-000000000002'),
-    -- KAISE LONG LIFE
-    ('a11c1e00-3000-4000-8000-000000000005', 'a11c1e00-1000-4000-8000-000000000003');
 
 COMMIT;

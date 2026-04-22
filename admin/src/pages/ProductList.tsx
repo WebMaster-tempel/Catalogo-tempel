@@ -7,7 +7,9 @@ import ConfirmDialog from '../components/ConfirmDialog';
 
 export default function ProductList() {
   const [products, setProducts] = useState<Product[]>([]);
-  const [meta, setMeta] = useState<PaginationMeta>({ page: 1, per_page: 20, total: 0, total_pages: 0 });
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('grid');
+  const [perPage, setPerPage] = useState(50);
+  const [meta, setMeta] = useState<PaginationMeta>({ page: 1, per_page: 50, total: 0, total_pages: 0 });
   const [categories, setCategories] = useState<Category[]>([]);
   const [productTypes, setProductTypes] = useState<ProductType[]>([]);
   const [search, setSearch] = useState('');
@@ -22,20 +24,30 @@ export default function ProductList() {
     setLoading(true);
     setError('');
     try {
-      const params: Record<string, string> = { page: String(page), per_page: '20' };
+      const params: Record<string, string> = { page: String(page), per_page: String(perPage) };
       if (search) params.search = search;
       if (categoryId) params.category_id = categoryId;
       if (typeId) params.product_type_id = typeId;
 
+      console.log('[ProductList] Fetching products with params:', params);
       const res = await productsApi.list(params);
+      console.log('[ProductList] API response:', {
+        total: res.meta?.pagination?.total,
+        returned: res.data?.length,
+        firstProduct: res.data?.[0],
+        pagination: res.meta?.pagination,
+        rawResponse: res,
+      });
       setProducts(res.data);
       setMeta(res.meta.pagination);
+      console.log('[ProductList] Products set:', res.data?.length, 'items');
     } catch (err: unknown) {
+      console.error('[ProductList] Error fetching products:', err);
       setError(err instanceof Error ? err.message : 'Error cargando productos');
     } finally {
       setLoading(false);
     }
-  }, [page, search, categoryId, typeId]);
+  }, [page, perPage, search, categoryId, typeId]);
 
   useEffect(() => {
     fetchProducts();
@@ -68,7 +80,7 @@ export default function ProductList() {
   return (
     <div>
       <div className="page-header">
-        <h1>Productos</h1>
+        <h1>Productos ({meta.total})</h1>
         <Link to="/products/new" className="btn btn-primary">+ Nuevo producto</Link>
       </div>
 
@@ -92,6 +104,44 @@ export default function ProductList() {
           ))}
         </select>
         <button type="submit" className="btn">Buscar</button>
+
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: '1rem', alignItems: 'center', borderLeft: '1px solid #ddd', paddingLeft: '1rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <label style={{ fontSize: '12px', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Mostrar:</label>
+            <select
+              value={perPage}
+              onChange={(e) => {
+                setPerPage(Number(e.target.value));
+                setPage(1);
+              }}
+              style={{ fontSize: '13px' }}
+            >
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value={250}>250</option>
+            </select>
+          </div>
+
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button
+              type="button"
+              className={`btn btn-sm ${viewMode === 'list' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setViewMode('list')}
+              title="Vista de lista"
+            >
+              ☰ Lista
+            </button>
+            <button
+              type="button"
+              className={`btn btn-sm ${viewMode === 'grid' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setViewMode('grid')}
+              title="Vista de cuadrícula"
+            >
+              ⊞ Grid
+            </button>
+          </div>
+        </div>
       </form>
 
       {error && <p className="error">{error}</p>}
@@ -100,55 +150,119 @@ export default function ProductList() {
         <p className="loading">Cargando...</p>
       ) : (
         <>
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Imagen</th>
-                <th>Nombre</th>
-                <th>Tipo</th>
-                <th>Estado</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {products.length === 0 ? (
-                <tr><td colSpan={5} className="empty">No hay productos</td></tr>
-              ) : (
-                products.map((p) => {
-                  const type = productTypes.find((t) => t.id === p.product_type_id);
-                  const mainMedia = p.media?.find((m) => m.type === 'image');
-                  return (
-                    <tr key={p.id}>
-                      <td>
-                        {mainMedia ? (
-                          <img src={mainMedia.url} alt={p.name} className="table-thumb" />
-                        ) : (
-                          <div className="no-image">Sin imagen</div>
-                        )}
-                      </td>
-                      <td>
-                        <strong>{p.name}</strong>
-                        {p.description && <p className="text-muted">{p.description.slice(0, 80)}...</p>}
-                      </td>
-                      <td>{type?.name || '—'}</td>
-                      <td>
+          {viewMode === 'list' ? (
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Imagen</th>
+                  <th>Nombre</th>
+                  <th>Categoría</th>
+                  <th>Estado</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {products.length === 0 ? (
+                  <tr><td colSpan={5} className="empty">No hay productos</td></tr>
+                ) : (
+                  products.map((p) => {
+                    const mainMedia = p.media?.find((m) => m.type === 'image');
+                    const productCategories = p.categories || [];
+                    return (
+                      <tr key={p.id}>
+                        <td>
+                          {mainMedia ? (
+                            <img src={mainMedia.url} alt={p.name} className="table-thumb" />
+                          ) : (
+                            <div className="no-image">Sin imagen</div>
+                          )}
+                        </td>
+                        <td>
+                          <strong>{p.name}</strong>
+                          {p.description && <p className="text-muted">{p.description.slice(0, 80)}...</p>}
+                        </td>
+                        <td>
+                          {productCategories.length > 0
+                            ? productCategories.map((c) => (
+                                <span key={c.id} className="tag" style={{ marginRight: '4px', fontSize: '11px' }}>{c.name}</span>
+                              ))
+                            : <span style={{ color: '#999' }}>—</span>
+                          }
+                        </td>
+                        <td>
+                          <span className={`badge badge-${p.status}`}>{p.status}</span>
+                        </td>
+                        <td>
+                          <div className="actions">
+                            <Link to={`/products/${p.id}`} className="btn btn-sm">Ver</Link>
+                            <Link to={`/products/${p.id}/edit`} className="btn btn-sm btn-secondary">Editar</Link>
+                            <button className="btn btn-sm btn-danger" onClick={() => setDeleteId(p.id)}>
+                              Eliminar
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '1.5rem', marginBottom: '1.5rem' }}>
+              {products.map((p) => {
+                const mainMedia = p.media?.find((m) => m.type === 'image');
+                const productCategories = p.categories || [];
+                return (
+                  <div
+                    key={p.id}
+                    style={{
+                      border: '1px solid #ddd',
+                      borderRadius: '8px',
+                      overflow: 'hidden',
+                      backgroundColor: '#fff',
+                      transition: 'all 0.2s',
+                    }}
+                    onMouseEnter={(e) => {
+                      (e.currentTarget as HTMLElement).style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+                      (e.currentTarget as HTMLElement).style.transform = 'translateY(-4px)';
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLElement).style.boxShadow = 'none';
+                      (e.currentTarget as HTMLElement).style.transform = 'none';
+                    }}
+                  >
+                    <div style={{ minHeight: '140px', backgroundColor: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                      {mainMedia ? (
+                        <img src={mainMedia.url} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        <span style={{ fontSize: '3em' }}>⚡</span>
+                      )}
+                    </div>
+                    <div style={{ padding: '1rem' }}>
+                      <h4 style={{ margin: '0.5rem 0', fontSize: '0.95em' }}>
+                        <Link to={`/products/${p.id}`} style={{ color: '#007bff', textDecoration: 'none' }}>
+                          {p.name}
+                        </Link>
+                      </h4>
+                      <p style={{ fontSize: '0.85em', color: '#666', marginBottom: '0.5rem' }}>
+                        {p.description?.slice(0, 60)}...
+                      </p>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                        <small style={{ color: '#999' }}>
+                          {productCategories.length > 0 ? productCategories.map((c) => c.name).join(', ') : '—'}
+                        </small>
                         <span className={`badge badge-${p.status}`}>{p.status}</span>
-                      </td>
-                      <td>
-                        <div className="actions">
-                          <Link to={`/products/${p.id}`} className="btn btn-sm">Ver</Link>
-                          <Link to={`/products/${p.id}/edit`} className="btn btn-sm btn-secondary">Editar</Link>
-                          <button className="btn btn-sm btn-danger" onClick={() => setDeleteId(p.id)}>
-                            Eliminar
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+                      </div>
+                      <div style={{ display: 'flex', gap: '0.25rem' }}>
+                        <Link to={`/products/${p.id}`} className="btn btn-sm" style={{ flex: 1, textAlign: 'center' }}>Ver</Link>
+                        <Link to={`/products/${p.id}/edit`} className="btn btn-sm btn-secondary" style={{ flex: 1, textAlign: 'center' }}>Editar</Link>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
           <Pagination meta={meta} onChange={setPage} />
         </>
       )}
