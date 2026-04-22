@@ -36,6 +36,25 @@ export interface Category {
   slug: string;
   parent_id?: string;
   description?: string;
+  technology?: string;
+  plate_type?: string;
+  design_life_years?: string;
+  cycles?: string;
+  capacity_range?: string;
+  applications?: string;
+  eurobat?: boolean;
+  characteristics?: string;
+  features?: CategoryFeature[];
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface CategoryFeature {
+  id: string;
+  category_id: string;
+  type: 'application' | 'characteristic';
+  label: string;
+  order: number;
   created_at: Date;
   updated_at: Date;
 }

@@ -19,12 +19,29 @@ export interface AttributeWithMeta extends Attribute {
   order: number;
 }
 
+export interface CategoryFeature {
+  id: string;
+  category_id: string;
+  type: 'application' | 'characteristic';
+  label: string;
+  order: number;
+}
+
 export interface Category {
   id: string;
   name: string;
   slug: string;
   parent_id?: string;
   level?: number;
+  technology?: string;
+  plate_type?: string;
+  design_life_years?: string;
+  cycles?: string;
+  capacity_range?: string;
+  applications?: string;
+  eurobat?: boolean;
+  characteristics?: string;
+  features?: CategoryFeature[];
 }
 
 export interface Media {

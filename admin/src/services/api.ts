@@ -64,6 +64,17 @@ export const categoriesApi = {
     request<any>(`/categories/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
   delete: (id: string) =>
     request<any>(`/categories/${id}`, { method: 'DELETE' }),
+  // Category Features
+  getFeatures: (categoryId: string, type?: string) =>
+    request<any>(`/categories/${categoryId}/features${type ? `?type=${type}` : ''}`),
+  createFeature: (categoryId: string, body: object) =>
+    request<any>(`/categories/${categoryId}/features`, { method: 'POST', body: JSON.stringify(body) }),
+  updateFeature: (categoryId: string, featureId: string, body: object) =>
+    request<any>(`/categories/${categoryId}/features/${featureId}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  deleteFeature: (categoryId: string, featureId: string) =>
+    request<any>(`/categories/${categoryId}/features/${featureId}`, { method: 'DELETE' }),
+  reorderFeatures: (categoryId: string, featureIds: string[]) =>
+    request<any>(`/categories/${categoryId}/features/reorder`, { method: 'POST', body: JSON.stringify({ featureIds }) }),
 };
 
 // --- Attributes ---
