@@ -7,8 +7,9 @@ import ConfirmDialog from '../components/ConfirmDialog';
 
 export default function ProductList() {
   const [products, setProducts] = useState<Product[]>([]);
-  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
-  const [meta, setMeta] = useState<PaginationMeta>({ page: 1, per_page: 20, total: 0, total_pages: 0 });
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('grid');
+  const [perPage, setPerPage] = useState(50);
+  const [meta, setMeta] = useState<PaginationMeta>({ page: 1, per_page: 50, total: 0, total_pages: 0 });
   const [categories, setCategories] = useState<Category[]>([]);
   const [productTypes, setProductTypes] = useState<ProductType[]>([]);
   const [search, setSearch] = useState('');
@@ -23,7 +24,7 @@ export default function ProductList() {
     setLoading(true);
     setError('');
     try {
-      const params: Record<string, string> = { page: String(page), per_page: '20' };
+      const params: Record<string, string> = { page: String(page), per_page: String(perPage) };
       if (search) params.search = search;
       if (categoryId) params.category_id = categoryId;
       if (typeId) params.product_type_id = typeId;
@@ -46,7 +47,7 @@ export default function ProductList() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, categoryId, typeId]);
+  }, [page, perPage, search, categoryId, typeId]);
 
   useEffect(() => {
     fetchProducts();
@@ -104,23 +105,42 @@ export default function ProductList() {
         </select>
         <button type="submit" className="btn">Buscar</button>
 
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.5rem', borderLeft: '1px solid #ddd', paddingLeft: '1rem' }}>
-          <button
-            type="button"
-            className={`btn btn-sm ${viewMode === 'list' ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => setViewMode('list')}
-            title="Vista de lista"
-          >
-            ☰ Lista
-          </button>
-          <button
-            type="button"
-            className={`btn btn-sm ${viewMode === 'grid' ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => setViewMode('grid')}
-            title="Vista de cuadrícula"
-          >
-            ⊞ Grid
-          </button>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: '1rem', alignItems: 'center', borderLeft: '1px solid #ddd', paddingLeft: '1rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <label style={{ fontSize: '12px', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Mostrar:</label>
+            <select
+              value={perPage}
+              onChange={(e) => {
+                setPerPage(Number(e.target.value));
+                setPage(1);
+              }}
+              style={{ fontSize: '13px' }}
+            >
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value={250}>250</option>
+            </select>
+          </div>
+
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button
+              type="button"
+              className={`btn btn-sm ${viewMode === 'list' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setViewMode('list')}
+              title="Vista de lista"
+            >
+              ☰ Lista
+            </button>
+            <button
+              type="button"
+              className={`btn btn-sm ${viewMode === 'grid' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setViewMode('grid')}
+              title="Vista de cuadrícula"
+            >
+              ⊞ Grid
+            </button>
+          </div>
         </div>
       </form>
 
