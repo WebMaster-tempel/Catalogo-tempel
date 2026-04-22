@@ -6,6 +6,7 @@ import { Product } from '../types';
 export default function Dashboard() {
   const [stats, setStats] = useState({ products: 0, categories: 0, types: 0, attributes: 0 });
   const [recentProducts, setRecentProducts] = useState<Product[]>([]);
+  const [perPage, setPerPage] = useState(12);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -14,7 +15,7 @@ export default function Dashboard() {
       categoriesApi.list(),
       productTypesApi.list(),
       attributesApi.list(),
-      productsApi.list({ per_page: '6' }),
+      productsApi.list({ per_page: String(perPage) }),
     ]).then(([products, categories, types, attributes, recents]) => {
       setStats({
         products: products.meta?.pagination?.total || 0,
@@ -25,7 +26,7 @@ export default function Dashboard() {
       setRecentProducts(recents.data || []);
       setLoading(false);
     });
-  }, []);
+  }, [perPage]);
 
   return (
     <div>
@@ -58,7 +59,22 @@ export default function Dashboard() {
         <div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
             <h2 style={{ fontSize: '18px', fontWeight: 600, color: 'var(--text)' }}>Productos destacados</h2>
-            <Link to="/products" className="btn btn-sm" style={{ fontSize: '12px' }}>Ver todos →</Link>
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <label style={{ fontSize: '12px', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Mostrar:</label>
+                <select
+                  value={perPage}
+                  onChange={(e) => setPerPage(Number(e.target.value))}
+                  style={{ fontSize: '13px' }}
+                >
+                  <option value={6}>6</option>
+                  <option value={12}>12</option>
+                  <option value={18}>18</option>
+                  <option value={24}>24</option>
+                </select>
+              </div>
+              <Link to="/products" className="btn btn-sm" style={{ fontSize: '12px' }}>Ver todos →</Link>
+            </div>
           </div>
 
           {loading ? (

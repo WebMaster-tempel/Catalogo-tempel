@@ -4,6 +4,7 @@ import { productsApi, productTypesApi, categoriesApi } from '../services/api';
 import { ProductType, Category, Media, AttributeWithMeta } from '../types';
 import DynamicAttributeFields from '../components/DynamicAttributeFields';
 import MediaManager from '../components/MediaManager';
+import ConfirmDialog from '../components/ConfirmDialog';
 
 interface FormState {
   name: string;
@@ -38,6 +39,7 @@ export default function ProductForm() {
   const [loading, setLoading] = useState(isEdit);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [showConfirm, setShowConfirm] = useState(false);
 
   // Load product types and categories once
   useEffect(() => {
@@ -113,8 +115,13 @@ export default function ProductForm() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setShowConfirm(true);
+  }
+
+  async function handleConfirmSubmit() {
     setSaving(true);
     setError('');
+    setShowConfirm(false);
 
     try {
       // Remove undefined values from attributes
@@ -143,15 +150,22 @@ export default function ProductForm() {
   return (
     <div>
       <div className="page-header">
-        <h1>{isEdit ? 'Editar producto' : 'Nuevo producto'}</h1>
+        <h1>{isEdit ? '✏️ Editar producto' : '➕ Nuevo producto'}</h1>
       </div>
 
       {error && <p className="error">{error}</p>}
 
       <form onSubmit={handleSubmit} className="form">
         {/* Basic info */}
-        <fieldset className="fieldset">
-          <legend>Información básica</legend>
+        <fieldset className="fieldset" style={{
+          background: '#fff',
+          border: '1px solid #e2e8f0',
+          borderRadius: '10px',
+          padding: '20px',
+          marginBottom: '1.5rem',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+        }}>
+          <legend style={{ fontSize: '16px', fontWeight: 700, color: '#1a202c', marginBottom: '16px' }}>ℹ️ Información básica</legend>
 
           <div className="form-group">
             <label>Nombre *</label>
@@ -217,25 +231,53 @@ export default function ProductForm() {
 
         {/* Dynamic attributes */}
         {typeAttributes.length > 0 && (
-          <DynamicAttributeFields
-            attributes={typeAttributes}
-            values={form.attributes}
-            onChange={handleAttrChange}
-          />
+          <div style={{
+            background: '#fff',
+            border: '1px solid #e2e8f0',
+            borderRadius: '10px',
+            padding: '20px',
+            marginBottom: '1.5rem',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+          }}>
+            <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: 700, color: '#1a202c' }}>⚙️ Atributos técnicos</h3>
+            <DynamicAttributeFields
+              attributes={typeAttributes}
+              values={form.attributes}
+              onChange={handleAttrChange}
+            />
+          </div>
         )}
 
         {/* Categories */}
-        <fieldset className="fieldset">
-          <legend>Categorías</legend>
-          <div className="checkbox-grid">
+        <fieldset className="fieldset" style={{
+          background: '#fff',
+          border: '1px solid #e2e8f0',
+          borderRadius: '10px',
+          padding: '20px',
+          marginBottom: '1.5rem',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+        }}>
+          <legend style={{ fontSize: '16px', fontWeight: 700, color: '#1a202c', marginBottom: '16px' }}>🏷️ Categorías</legend>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '12px' }}>
             {categories.map((c) => (
-              <label key={c.id} className="checkbox-label">
+              <label key={c.id} className="checkbox-label" style={{
+                background: form.category_ids.includes(c.id) ? '#eef2ff' : '#f8fafc',
+                border: `1px solid ${form.category_ids.includes(c.id) ? '#4f46e5' : '#e2e8f0'}`,
+                borderRadius: '8px',
+                padding: '12px',
+                cursor: 'pointer',
+                transition: 'all 0.15s',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+              }}>
                 <input
                   type="checkbox"
                   checked={form.category_ids.includes(c.id)}
                   onChange={() => toggleCategory(c.id)}
+                  style={{ cursor: 'pointer' }}
                 />
-                {c.name}
+                <span style={{ fontSize: '14px', fontWeight: 500, color: '#1a202c' }}>{c.name}</span>
               </label>
             ))}
           </div>
@@ -254,13 +296,21 @@ export default function ProductForm() {
 
         <div className="form-actions">
           <button type="submit" className="btn btn-primary" disabled={saving}>
-            {saving ? 'Guardando...' : isEdit ? 'Guardar cambios' : 'Crear producto'}
+            {saving ? 'Guardando...' : isEdit ? '💾 Guardar cambios' : '✅ Crear producto'}
           </button>
           <button type="button" className="btn" onClick={() => navigate('/products')}>
-            Cancelar
+            ✕ Cancelar
           </button>
         </div>
       </form>
+
+      {showConfirm && (
+        <ConfirmDialog
+          message={isEdit ? `¿Guardar cambios en "${form.name}"?` : `¿Crear nuevo producto "${form.name}"?`}
+          onConfirm={handleConfirmSubmit}
+          onCancel={() => setShowConfirm(false)}
+        />
+      )}
     </div>
   );
 }
