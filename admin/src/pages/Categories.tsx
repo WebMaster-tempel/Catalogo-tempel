@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { categoriesApi } from '../services/api';
 import { Category, CategoryFeature } from '../types';
 import ConfirmDialog from '../components/ConfirmDialog';
+import CategoryTree from '../components/CategoryTree';
 
 export default function Categories() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -11,10 +12,10 @@ export default function Categories() {
   const [deleteFeatureId, setDeleteFeatureId] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [form, setForm] = useState({ name: '', slug: '', parent_id: '' });
-  const [featureForm, setFeatureForm] = useState({ type: 'application', label: '' });
+  const [featureLabel, setFeatureLabel] = useState('');
   const [saving, setSaving] = useState(false);
   const [showNewCatForm, setShowNewCatForm] = useState(false);
-  const [activeFeatureTab, setActiveFeatureTab] = useState<'application' | 'characteristic'>('application');
+  const [activeTab, setActiveTab] = useState<'application' | 'characteristic'>('application');
 
   const load = useCallback(async () => {
     try {
@@ -37,14 +38,19 @@ export default function Categories() {
   }
 
   function autoSlug(name: string) {
-    return name.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    return name
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '');
   }
 
   function selectCategory(cat: Category) {
     setSelected(cat);
     loadFeatures(cat.id);
-    setActiveFeatureTab('application');
-    setFeatureForm({ type: 'application', label: '' });
+    setActiveTab('application');
+    setFeatureLabel('');
   }
 
   async function handleCreateCategory(e: React.FormEvent) {
@@ -81,14 +87,11 @@ export default function Categories() {
 
   async function handleCreateFeature(e: React.FormEvent) {
     e.preventDefault();
-    if (!selected) return;
+    if (!selected || !featureLabel.trim()) return;
     setSaving(true);
     try {
-      await categoriesApi.createFeature(selected.id, {
-        type: activeFeatureTab,
-        label: featureForm.label,
-      });
-      setFeatureForm({ type: activeFeatureTab, label: '' });
+      await categoriesApi.createFeature(selected.id, { type: activeTab, label: featureLabel.trim() });
+      setFeatureLabel('');
       await loadFeatures(selected.id);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Error creando feature');
@@ -108,31 +111,36 @@ export default function Categories() {
     }
   }
 
-  const applications = features.filter((f) => f.type === 'application').sort((a, b) => a.order - b.order);
-  const characteristics = features.filter((f) => f.type === 'characteristic').sort((a, b) => a.order - b.order);
-  const activeFeatures = activeFeatureTab === 'application' ? applications : characteristics;
+  const applications = features.filter(f => f.type === 'application').sort((a, b) => a.order - b.order);
+  const characteristics = features.filter(f => f.type === 'characteristic').sort((a, b) => a.order - b.order);
+  const activeFeatures = activeTab === 'application' ? applications : characteristics;
 
-  const seriesColors: Record<string, { bg: string; border: string; text: string }> = {
-    'kaise-litio':           { bg: '#eff6ff', border: '#3b82f6', text: '#1d4ed8' },
-    'kaise-standard':        { bg: '#f0fdf4', border: '#22c55e', text: '#15803d' },
-    'kaise-long-life':       { bg: '#faf5ff', border: '#a855f7', text: '#7e22ce' },
-    'kaise-ultra-long-life': { bg: '#fefce8', border: '#eab308', text: '#854d0e' },
-    'kaise-high-rate':       { bg: '#fff7ed', border: '#f97316', text: '#c2410c' },
-    'kaise-solar-agm':       { bg: '#f0fdf4', border: '#10b981', text: '#065f46' },
-    'kaise-deep-cycle':      { bg: '#fdf4ff', border: '#c084fc', text: '#6b21a8' },
-    'kaise-front-terminal':  { bg: '#f0f9ff', border: '#0ea5e9', text: '#0c4a6e' },
-    'kaise-high-temperature':{ bg: '#fef2f2', border: '#ef4444', text: '#991b1b' },
-  };
-
-  function getSeriesColor(slug: string) {
-    return seriesColors[slug] || { bg: '#f8fafc', border: '#94a3b8', text: '#334155' };
+  function getBreadcrumb(category: Category): Category[] {
+    const path: Category[] = [category];
+    let current = category;
+    while (current.parent_id) {
+      const parent = categories.find(c => c.id === current.parent_id);
+      if (!parent) break;
+      path.unshift(parent);
+      current = parent;
+    }
+    return path;
   }
+
+  const breadcrumb = selected ? getBreadcrumb(selected) : [];
+  const hasTechInfo = selected && (
+    selected.technology ||
+    selected.plate_type ||
+    selected.design_life_years ||
+    selected.cycles ||
+    selected.capacity_range
+  );
 
   return (
     <div>
       <div className="page-header">
         <h1>Categorías ({categories.length})</h1>
-        <button className="btn btn-primary" onClick={() => setShowNewCatForm(!showNewCatForm)}>
+        <button className="btn btn-primary" onClick={() => setShowNewCatForm(v => !v)}>
           {showNewCatForm ? '✕ Cancelar' : '+ Nueva categoría'}
         </button>
       </div>
@@ -150,7 +158,7 @@ export default function Categories() {
                   type="text"
                   required
                   value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value, slug: autoSlug(e.target.value) })}
+                  onChange={e => setForm({ ...form, name: e.target.value, slug: autoSlug(e.target.value) })}
                   placeholder="Ej. KAISE HIGH RATE"
                 />
               </div>
@@ -160,17 +168,19 @@ export default function Categories() {
                   type="text"
                   required
                   value={form.slug}
-                  onChange={(e) => setForm({ ...form, slug: e.target.value })}
+                  onChange={e => setForm({ ...form, slug: e.target.value })}
                   placeholder="kaise-high-rate"
                 />
               </div>
             </div>
-            <div className="form-group" style={{ maxWidth: '320px' }}>
+            <div className="form-group" style={{ maxWidth: '360px' }}>
               <label>Categoría padre</label>
-              <select value={form.parent_id} onChange={(e) => setForm({ ...form, parent_id: e.target.value })}>
-                <option value="">— Sin padre —</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
+              <select value={form.parent_id} onChange={e => setForm({ ...form, parent_id: e.target.value })}>
+                <option value="">— Sin padre (nodo raíz) —</option>
+                {categories.map(c => (
+                  <option key={c.id} value={c.id}>
+                    {'  '.repeat(c.level ?? 0)}{c.name}
+                  </option>
                 ))}
               </select>
             </div>
@@ -184,193 +194,99 @@ export default function Categories() {
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: selected ? '1fr 1fr' : '1fr', gap: '1.5rem', alignItems: 'start' }}>
-        {/* Category list */}
-        <div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '0.75rem' }}>
-            {categories.map((c) => {
-              const parent = categories.find((p) => p.id === c.parent_id);
-              const isSelected = selected?.id === c.id;
-              const colors = getSeriesColor(c.slug);
-              return (
-                <div
-                  key={c.id}
-                  onClick={() => selectCategory(c)}
-                  style={{
-                    border: `2px solid ${isSelected ? colors.border : '#e2e8f0'}`,
-                    borderLeft: `4px solid ${colors.border}`,
-                    borderRadius: '8px',
-                    padding: '14px 16px',
-                    background: isSelected ? colors.bg : '#fff',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s',
-                    boxShadow: isSelected ? `0 0 0 3px ${colors.border}33` : '0 1px 3px rgba(0,0,0,0.06)',
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!isSelected) (e.currentTarget as HTMLElement).style.background = colors.bg;
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!isSelected) (e.currentTarget as HTMLElement).style.background = '#fff';
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 600, fontSize: '14px', color: colors.text, marginBottom: '4px' }}>
-                        {c.name}
-                      </div>
-                      <code style={{
-                        fontSize: '11px',
-                        background: '#f1f5f9',
-                        border: '1px solid #e2e8f0',
-                        borderRadius: '4px',
-                        padding: '1px 6px',
-                        color: '#64748b',
-                      }}>{c.slug}</code>
-                      {parent && (
-                        <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '4px' }}>
-                          Subcategoría de: {parent.name}
-                        </div>
-                      )}
-                    </div>
-                    <button
-                      className="btn btn-sm btn-danger"
-                      style={{ marginLeft: '8px', flexShrink: 0 }}
-                      onClick={(e) => { e.stopPropagation(); setDeleteId(c.id); }}
-                    >
-                      ✕
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+      {/* ── Workspace ─────────────────────────────────── */}
+      <div className="catalog-workspace">
+
+        {/* Left: tree navigator */}
+        <div className="catalog-tree-panel">
+          <CategoryTree
+            categories={categories}
+            selected={selected}
+            onSelect={selectCategory}
+          />
         </div>
 
-        {/* Feature panel */}
-        {selected && (
-          <div style={{ position: 'sticky', top: '24px' }}>
-            <div style={{
-              background: '#fff',
-              border: '1px solid #e2e8f0',
-              borderRadius: '10px',
-              overflow: 'hidden',
-              boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
-            }}>
-              {/* Header */}
-              <div style={{
-                background: `linear-gradient(135deg, ${getSeriesColor(selected.slug).border}22, ${getSeriesColor(selected.slug).border}08)`,
-                borderBottom: `3px solid ${getSeriesColor(selected.slug).border}`,
-                padding: '16px 20px',
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                  <h3 style={{ fontSize: '16px', fontWeight: 700, color: getSeriesColor(selected.slug).text }}>
-                    {selected.name}
-                  </h3>
-                  <button
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: '18px', lineHeight: 1 }}
-                    onClick={() => setSelected(null)}
-                    title="Cerrar"
-                  >
-                    ✕
-                  </button>
-                </div>
-                <div style={{ display: 'flex', gap: '12px' }}>
-                  <span style={{
-                    background: '#fff',
-                    border: '1px solid #e2e8f0',
-                    borderRadius: '99px',
-                    padding: '3px 10px',
-                    fontSize: '12px',
-                    color: '#475569',
-                  }}>
-                    {applications.length} aplicaciones
-                  </span>
-                  <span style={{
-                    background: '#fff',
-                    border: '1px solid #e2e8f0',
-                    borderRadius: '99px',
-                    padding: '3px 10px',
-                    fontSize: '12px',
-                    color: '#475569',
-                  }}>
-                    {characteristics.length} características
-                  </span>
-                </div>
-              </div>
+        {/* Right: detail panel */}
+        {selected ? (
+          <div className="catalog-detail-panel">
 
+            {/* Breadcrumb */}
+            <div className="detail-breadcrumb">
+              {breadcrumb.map((cat, i) => (
+                <span key={cat.id} style={{ display: 'inline-flex', alignItems: 'center' }}>
+                  {i > 0 && <span className="breadcrumb-sep">›</span>}
+                  <span
+                    className={cat.id === selected.id ? 'breadcrumb-current' : 'breadcrumb-link'}
+                    onClick={() => cat.id !== selected.id && selectCategory(cat)}
+                  >
+                    {cat.name}
+                  </span>
+                </span>
+              ))}
+            </div>
+
+            {/* Header */}
+            <div className="detail-header">
+              <div style={{ minWidth: 0 }}>
+                <h2 className="detail-title">{selected.name}</h2>
+                <code className="detail-slug">{selected.slug}</code>
+              </div>
+              <div className="actions" style={{ flexShrink: 0 }}>
+                <button className="btn btn-danger btn-sm" onClick={() => setDeleteId(selected.id)}>
+                  Eliminar
+                </button>
+                <button className="btn btn-sm" onClick={() => setSelected(null)} title="Cerrar">
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            {/* Technical info */}
+            {hasTechInfo && (
+              <div className="detail-section">
+                <p className="detail-section-title">Información técnica</p>
+                <dl>
+                  {selected.technology      && <><dt>Tecnología</dt><dd>{selected.technology}</dd></>}
+                  {selected.plate_type      && <><dt>Placa</dt><dd>{selected.plate_type}</dd></>}
+                  {selected.design_life_years && <><dt>Vida útil</dt><dd>{selected.design_life_years} años</dd></>}
+                  {selected.cycles          && <><dt>Ciclos</dt><dd>{selected.cycles}</dd></>}
+                  {selected.capacity_range  && <><dt>Capacidad</dt><dd>{selected.capacity_range}</dd></>}
+                </dl>
+              </div>
+            )}
+
+            {/* Features */}
+            <div className="detail-section detail-section--features">
               {/* Tabs */}
-              <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', background: '#f8fafc' }}>
-                {(['application', 'characteristic'] as const).map((tab) => (
+              <div className="detail-tabs">
+                {(['application', 'characteristic'] as const).map(tab => (
                   <button
                     key={tab}
-                    onClick={() => { setActiveFeatureTab(tab); setFeatureForm({ type: tab, label: '' }); }}
-                    style={{
-                      flex: 1,
-                      padding: '10px 16px',
-                      background: activeFeatureTab === tab ? '#fff' : 'transparent',
-                      border: 'none',
-                      borderBottom: activeFeatureTab === tab ? `2px solid ${getSeriesColor(selected.slug).border}` : '2px solid transparent',
-                      cursor: 'pointer',
-                      fontWeight: activeFeatureTab === tab ? 600 : 400,
-                      fontSize: '13px',
-                      color: activeFeatureTab === tab ? getSeriesColor(selected.slug).text : '#94a3b8',
-                      transition: 'all 0.15s',
-                    }}
+                    className={`detail-tab${activeTab === tab ? ' detail-tab--active' : ''}`}
+                    onClick={() => { setActiveTab(tab); setFeatureLabel(''); }}
                   >
-                    {tab === 'application' ? `Aplicaciones (${applications.length})` : `Características (${characteristics.length})`}
+                    {tab === 'application'
+                      ? `Aplicaciones (${applications.length})`
+                      : `Características (${characteristics.length})`}
                   </button>
                 ))}
               </div>
 
-              {/* Feature list */}
-              <div style={{ padding: '16px 20px', minHeight: '200px', maxHeight: '380px', overflowY: 'auto' }}>
+              {/* List */}
+              <div className="detail-features">
                 {activeFeatures.length === 0 ? (
-                  <p style={{ color: '#94a3b8', textAlign: 'center', padding: '32px 0', fontSize: '13px' }}>
-                    No hay {activeFeatureTab === 'application' ? 'aplicaciones' : 'características'} aún.
+                  <p className="tree-empty">
+                    No hay {activeTab === 'application' ? 'aplicaciones' : 'características'} todavía.
                   </p>
                 ) : (
-                  <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <ul className="feature-list">
                     {activeFeatures.map((f, i) => (
-                      <li
-                        key={f.id}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '10px',
-                          padding: '8px 12px',
-                          background: '#f8fafc',
-                          borderRadius: '6px',
-                          border: '1px solid #f1f5f9',
-                        }}
-                      >
-                        <span style={{
-                          flexShrink: 0,
-                          width: '22px',
-                          height: '22px',
-                          background: `${getSeriesColor(selected.slug).border}22`,
-                          color: getSeriesColor(selected.slug).text,
-                          borderRadius: '50%',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: '11px',
-                          fontWeight: 700,
-                        }}>{i + 1}</span>
-                        <span style={{ flex: 1, fontSize: '13px', color: '#334155' }}>{f.label}</span>
+                      <li key={f.id} className="feature-item">
+                        <span className="feature-num">{i + 1}</span>
+                        <span className="feature-label">{f.label}</span>
                         <button
+                          className="feature-delete"
                           onClick={() => setDeleteFeatureId(f.id)}
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            cursor: 'pointer',
-                            color: '#cbd5e1',
-                            fontSize: '14px',
-                            padding: '2px 4px',
-                            borderRadius: '4px',
-                            transition: 'color 0.15s',
-                          }}
-                          onMouseEnter={(e) => (e.currentTarget.style.color = '#ef4444')}
-                          onMouseLeave={(e) => (e.currentTarget.style.color = '#cbd5e1')}
                           title="Eliminar"
                         >
                           ✕
@@ -382,28 +298,27 @@ export default function Categories() {
               </div>
 
               {/* Add form */}
-              <div style={{ padding: '12px 20px', borderTop: '1px solid #e2e8f0', background: '#f8fafc' }}>
-                <form onSubmit={handleCreateFeature} style={{ display: 'flex', gap: '8px' }}>
-                  <input
-                    type="text"
-                    placeholder={`Añadir ${activeFeatureTab === 'application' ? 'aplicación' : 'característica'}...`}
-                    value={featureForm.label}
-                    onChange={(e) => setFeatureForm({ ...featureForm, label: e.target.value })}
-                    required
-                    style={{
-                      flex: 1,
-                      padding: '8px 12px',
-                      border: '1px solid #e2e8f0',
-                      borderRadius: '6px',
-                      fontSize: '13px',
-                      outline: 'none',
-                    }}
-                  />
-                  <button type="submit" className="btn btn-primary btn-sm" disabled={saving} style={{ whiteSpace: 'nowrap' }}>
-                    {saving ? '...' : '+ Añadir'}
-                  </button>
-                </form>
-              </div>
+              <form className="feature-add-form" onSubmit={handleCreateFeature}>
+                <input
+                  type="text"
+                  placeholder={`+ Añadir ${activeTab === 'application' ? 'aplicación' : 'característica'}...`}
+                  value={featureLabel}
+                  onChange={e => setFeatureLabel(e.target.value)}
+                  required
+                />
+                <button type="submit" className="btn btn-primary btn-sm" disabled={saving}>
+                  {saving ? '...' : 'Añadir'}
+                </button>
+              </form>
+            </div>
+
+          </div>
+        ) : (
+          <div className="detail-empty">
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '32px', marginBottom: '12px', opacity: 0.3 }}>◆</div>
+              <p>Selecciona una categoría del árbol</p>
+              <p style={{ fontSize: '12px', marginTop: '4px', opacity: 0.7 }}>para ver sus detalles y features</p>
             </div>
           </div>
         )}
