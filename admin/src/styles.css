@@ -406,6 +406,7 @@ code { background: #f7fafc; border: 1px solid var(--border); padding: 1px 6px; b
   display: flex;
   flex-direction: column;
   overflow-y: auto;
+  min-height: 0;
 }
 
 .detail-empty {
