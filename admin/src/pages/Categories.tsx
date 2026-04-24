@@ -132,9 +132,10 @@ export default function Categories() {
   const hasTechInfo = selected && (
     selected.technology ||
     selected.plate_type ||
+    selected.eurobat === true ||
     selected.design_life_years ||
-    selected.cycles ||
-    selected.capacity_range
+    selected.capacity_range ||
+    selected.cycles
   );
 
   return (
@@ -245,13 +246,26 @@ export default function Categories() {
             {/* Technical info */}
             {hasTechInfo && (
               <div className="detail-section">
-                <p className="detail-section-title">Información técnica</p>
-                <dl>
-                  {selected.technology      && <><dt>Tecnología</dt><dd>{selected.technology}</dd></>}
-                  {selected.plate_type      && <><dt>Placa</dt><dd>{selected.plate_type}</dd></>}
-                  {selected.design_life_years && <><dt>Vida útil</dt><dd>{selected.design_life_years} años</dd></>}
-                  {selected.cycles          && <><dt>Ciclos</dt><dd>{selected.cycles}</dd></>}
-                  {selected.capacity_range  && <><dt>Capacidad</dt><dd>{selected.capacity_range}</dd></>}
+                <p className="detail-section-title">Especificaciones técnicas</p>
+                <dl className="tech-dl">
+                  {selected.technology && (
+                    <><dt>Tecnología</dt><dd>{selected.technology}</dd></>
+                  )}
+                  {selected.plate_type && (
+                    <><dt>Tipo de placa</dt><dd>{selected.plate_type}</dd></>
+                  )}
+                  {selected.eurobat === true && (
+                    <><dt>Clasif. Eurobat</dt><dd><span className="badge-eurobat">✓ Certificada</span></dd></>
+                  )}
+                  {selected.design_life_years && (
+                    <><dt>Vida de diseño</dt><dd>{selected.design_life_years}</dd></>
+                  )}
+                  {selected.capacity_range && (
+                    <><dt>Capacidad</dt><dd>{selected.capacity_range}</dd></>
+                  )}
+                  {selected.cycles && (
+                    <><dt>Nº de ciclos</dt><dd>{selected.cycles}</dd></>
+                  )}
                 </dl>
               </div>
             )}
