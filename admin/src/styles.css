@@ -568,3 +568,61 @@ code { background: #f7fafc; border: 1px solid var(--border); padding: 1px 6px; b
   .catalog-workspace { grid-template-columns: 1fr; max-height: none; }
   .catalog-tree-panel { border-right: none; border-bottom: 1px solid var(--border); max-height: 300px; }
 }
+
+/* ── Compatibility matrix ──────────────────────────────────────────── */
+.compat-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+.compat-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  font-size: 12.5px;
+}
+.compat-item--best {
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+}
+.compat-item--suitable {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
+.compat-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 20px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+  padding: 0 4px;
+}
+.compat-item--best    .compat-badge { background: #059669; color: #fff; }
+.compat-item--suitable .compat-badge { background: #3b82f6; color: #fff; }
+.compat-badge--best    { background: #059669; color: #fff; }
+.compat-badge--suitable { background: #3b82f6; color: #fff; }
+
+.compat-label { color: var(--text); }
+.compat-item--best .compat-label    { color: #065f46; font-weight: 500; }
+.compat-item--suitable .compat-label { color: #1e40af; }
+
+.compat-legend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 6px;
+  flex-wrap: wrap;
+}

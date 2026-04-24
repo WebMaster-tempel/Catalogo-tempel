@@ -111,9 +111,10 @@ export default function Categories() {
     }
   }
 
-  const applications = features.filter(f => f.type === 'application').sort((a, b) => a.order - b.order);
+  const applications    = features.filter(f => f.type === 'application').sort((a, b) => a.order - b.order);
   const characteristics = features.filter(f => f.type === 'characteristic').sort((a, b) => a.order - b.order);
-  const activeFeatures = activeTab === 'application' ? applications : characteristics;
+  const compatibility   = features.filter(f => f.type === 'compatibility').sort((a, b) => a.order - b.order);
+  const activeFeatures  = activeTab === 'application' ? applications : characteristics;
 
   function getBreadcrumb(category: Category): Category[] {
     const path: Category[] = [category];
@@ -252,6 +253,28 @@ export default function Categories() {
                   {selected.cycles          && <><dt>Ciclos</dt><dd>{selected.cycles}</dd></>}
                   {selected.capacity_range  && <><dt>Capacidad</dt><dd>{selected.capacity_range}</dd></>}
                 </dl>
+              </div>
+            )}
+
+            {/* Compatibility matrix */}
+            {compatibility.length > 0 && (
+              <div className="detail-section">
+                <p className="detail-section-title">Compatibilidad de aplicaciones</p>
+                <div className="compat-grid">
+                  {compatibility.map(f => (
+                    <div key={f.id} className={`compat-item compat-item--${f.suitability}`}>
+                      <span className="compat-badge">
+                        {f.suitability === 'best' ? 'XX' : '×'}
+                      </span>
+                      <span className="compat-label">{f.label}</span>
+                    </div>
+                  ))}
+                </div>
+                <p className="compat-legend">
+                  <span className="compat-badge compat-badge--best">XX</span> Aplicación óptima
+                  &nbsp;&nbsp;
+                  <span className="compat-badge compat-badge--suitable">×</span> Compatible
+                </p>
               </div>
             )}
 
