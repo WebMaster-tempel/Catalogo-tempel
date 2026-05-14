@@ -105,10 +105,7 @@ export class ProductService {
   }
 
   async listProducts(options: QueryOptions): Promise<any> {
-    if (options.filters && Object.keys(options.filters).length > 0) {
-      return this.productRepo.listWithDynamicFilters(options);
-    }
-    return this.productRepo.list(options);
+    return this.productRepo.search(options);
   }
 
   private async validateProductAttributes(

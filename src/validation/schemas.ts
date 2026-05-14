@@ -63,6 +63,17 @@ export const listProductsQuerySchema = Joi.object({
   product_type_id: Joi.string().uuid().optional(),
   status: Joi.string().valid('draft', 'published', 'archived').optional(),
   filters: Joi.object().unknown(true).optional(),
+  // Advanced category-based filters
+  application: Joi.string().optional(),
+  technology: Joi.string().optional(),
+  plate_type: Joi.string().optional(),
+  eurobat: Joi.boolean().optional(),
+  capacity_range: Joi.string().optional(),
+  characteristics: Joi.string().optional(),
+  // Numeric product attribute filters
+  capacity_min: Joi.number().optional(),
+  capacity_max: Joi.number().optional(),
+  voltage: Joi.number().optional(),
 });
 
 export const assignProductTypeAttributeSchema = Joi.object({

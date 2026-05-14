@@ -48,115 +48,100 @@ export class ProductRepository extends BaseRepository {
     );
   }
 
-  async list(options: QueryOptions): Promise<{ data: Product[]; meta: PaginationMeta }> {
+  async search(options: QueryOptions): Promise<{ data: any[]; meta: PaginationMeta }> {
     const page = options.page || 1;
     const perPage = options.per_page || 20;
     const offset = (page - 1) * perPage;
 
-    let where = [];
-    let params: any[] = [];
+    const where: string[] = [];
+    const params: any[] = [];
     let paramIndex = 1;
 
     if (options.search) {
-      where.push(`(name ILIKE $${paramIndex} OR description ILIKE $${paramIndex})`);
       params.push(`%${options.search}%`);
+      where.push(`(
+        p.name ILIKE $${paramIndex} OR
+        p.description ILIKE $${paramIndex} OR
+        c.name ILIKE $${paramIndex} OR
+        c.applications ILIKE $${paramIndex} OR
+        c.characteristics ILIKE $${paramIndex} OR
+        c.description ILIKE $${paramIndex}
+      )`);
+      paramIndex++;
+    }
+
+    if (options.application) {
+      params.push(`%${options.application}%`);
+      where.push(`c.applications ILIKE $${paramIndex}`);
+      paramIndex++;
+    }
+
+    if (options.technology) {
+      params.push(`%${options.technology}%`);
+      where.push(`c.technology ILIKE $${paramIndex}`);
+      paramIndex++;
+    }
+
+    if (options.plate_type) {
+      params.push(`%${options.plate_type}%`);
+      where.push(`c.plate_type ILIKE $${paramIndex}`);
+      paramIndex++;
+    }
+
+    if (options.eurobat !== undefined) {
+      params.push(options.eurobat);
+      where.push(`c.eurobat = $${paramIndex}`);
+      paramIndex++;
+    }
+
+    if (options.capacity_range) {
+      params.push(`%${options.capacity_range}%`);
+      where.push(`c.capacity_range ILIKE $${paramIndex}`);
+      paramIndex++;
+    }
+
+    if (options.characteristics) {
+      params.push(`%${options.characteristics}%`);
+      where.push(`c.characteristics ILIKE $${paramIndex}`);
       paramIndex++;
     }
 
     if (options.product_type_id) {
-      where.push(`product_type_id = $${paramIndex}`);
       params.push(options.product_type_id);
-      paramIndex++;
-    }
-
-    if (options.status) {
-      where.push(`status = $${paramIndex}`);
-      params.push(options.status);
-      paramIndex++;
-    }
-
-    if (options.category_id) {
-      where.push(`id IN (SELECT product_id FROM product_categories WHERE category_id = $${paramIndex})`);
-      params.push(options.category_id);
-      paramIndex++;
-    }
-
-    const whereClause = where.length > 0 ? `WHERE ${where.join(' AND ')}` : '';
-
-    const countResult = await this.db.one(
-      `SELECT COUNT(*) as total FROM products ${whereClause}`,
-      params
-    );
-    const total = parseInt(countResult.total, 10);
-
-    const data = await this.db.any(
-      `SELECT p.*,
-         COALESCE(
-           (SELECT jsonb_agg(jsonb_build_object('id', c.id, 'name', c.name, 'slug', c.slug))
-            FROM product_categories pc
-            JOIN categories c ON pc.category_id = c.id
-            WHERE pc.product_id = p.id), '[]'::jsonb
-         ) AS categories,
-         COALESCE(
-           (SELECT jsonb_agg(jsonb_build_object('id', m.id, 'type', m.type, 'url', m.url, 'order', m."order")
-                             ORDER BY m."order")
-            FROM media m
-            WHERE m.product_id = p.id), '[]'::jsonb
-         ) AS media
-       FROM products p
-       ${whereClause}
-       ORDER BY p.name ASC
-       LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`,
-      [...params, perPage, offset]
-    );
-
-    return {
-      data,
-      meta: {
-        page,
-        per_page: perPage,
-        total,
-        total_pages: Math.ceil(total / perPage),
-      },
-    };
-  }
-
-  async listWithDynamicFilters(options: QueryOptions): Promise<{ data: any[]; meta: PaginationMeta }> {
-    const page = options.page || 1;
-    const perPage = options.per_page || 20;
-    const offset = (page - 1) * perPage;
-
-    let where = [];
-    let params: any[] = [];
-    let paramIndex = 1;
-
-    if (options.search) {
-      where.push(`p.name ILIKE $${paramIndex} OR p.description ILIKE $${paramIndex}`);
-      params.push(`%${options.search}%`);
-      paramIndex++;
-    }
-
-    if (options.product_type_id) {
       where.push(`p.product_type_id = $${paramIndex}`);
-      params.push(options.product_type_id);
       paramIndex++;
     }
 
     if (options.status) {
-      where.push(`p.status = $${paramIndex}`);
       params.push(options.status);
+      where.push(`p.status = $${paramIndex}`);
       paramIndex++;
     }
 
     if (options.category_id) {
-      where.push(
-        `p.id IN (SELECT product_id FROM product_categories WHERE category_id = $${paramIndex})`
-      );
       params.push(options.category_id);
+      where.push(`pc.category_id = $${paramIndex}`);
       paramIndex++;
     }
 
-    // Dynamic attribute filters
+    if (options.capacity_min !== undefined) {
+      params.push(options.capacity_min);
+      where.push(`(pav.attributes_json->>'capacity_nominal_10h')::numeric >= $${paramIndex}`);
+      paramIndex++;
+    }
+
+    if (options.capacity_max !== undefined) {
+      params.push(options.capacity_max);
+      where.push(`(pav.attributes_json->>'capacity_nominal_10h')::numeric <= $${paramIndex}`);
+      paramIndex++;
+    }
+
+    if (options.voltage !== undefined) {
+      params.push(options.voltage);
+      where.push(`(pav.attributes_json->>'voltage')::numeric = $${paramIndex}`);
+      paramIndex++;
+    }
+
     if (options.filters) {
       Object.entries(options.filters).forEach(([key, value]) => {
         where.push(`pav.attributes_json->>'${key.replace(/'/g, "''")}' = $${paramIndex}`);
@@ -168,16 +153,37 @@ export class ProductRepository extends BaseRepository {
     const whereClause = where.length > 0 ? `WHERE ${where.join(' AND ')}` : '';
 
     const countResult = await this.db.one(
-      `SELECT COUNT(*) as total FROM products p LEFT JOIN product_attribute_values pav ON p.id = pav.product_id ${whereClause}`,
+      `SELECT COUNT(DISTINCT p.id) as total
+       FROM products p
+       LEFT JOIN product_attribute_values pav ON p.id = pav.product_id
+       LEFT JOIN product_categories pc ON p.id = pc.product_id
+       LEFT JOIN categories c ON pc.category_id = c.id
+       ${whereClause}`,
       params
     );
     const total = parseInt(countResult.total, 10);
 
     const data = await this.db.any(
-      `SELECT p.*, pav.attributes_json FROM products p
+      `SELECT DISTINCT ON (p.id) p.*,
+         pav.attributes_json,
+         COALESCE(
+           (SELECT jsonb_agg(jsonb_build_object('id', c2.id, 'name', c2.name, 'slug', c2.slug))
+            FROM product_categories pc2
+            JOIN categories c2 ON pc2.category_id = c2.id
+            WHERE pc2.product_id = p.id), '[]'::jsonb
+         ) AS categories,
+         COALESCE(
+           (SELECT jsonb_agg(jsonb_build_object('id', m.id, 'type', m.type, 'url', m.url, 'order', m."order")
+                             ORDER BY m."order")
+            FROM media m
+            WHERE m.product_id = p.id), '[]'::jsonb
+         ) AS media
+       FROM products p
        LEFT JOIN product_attribute_values pav ON p.id = pav.product_id
+       LEFT JOIN product_categories pc ON p.id = pc.product_id
+       LEFT JOIN categories c ON pc.category_id = c.id
        ${whereClause}
-       ORDER BY p.created_at DESC
+       ORDER BY p.id, p.name ASC
        LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`,
       [...params, perPage, offset]
     );
