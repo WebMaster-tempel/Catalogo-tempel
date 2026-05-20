@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: Kaise Catalog
- * Plugin URI:  https://kaise.e
+ * Plugin URI:  https://kaise.es
  * Description: Buscador de productos Kaise con IA y filtros avanzados.
  * Version:     1.0.0
  * Author:      Sergi Mallén
@@ -11,10 +11,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-define( 'KAISE_CATALOG_VERSION', '1.0.7' );
-
-// Header requerido por localtunnel para saltar la pantalla de verificación
-define( 'KAISE_LT_HEADERS', [ 'headers' => [ 'bypass-tunnel-reminder' => '1' ] ] );
+define( 'KAISE_CATALOG_VERSION', '1.0.0' );
 define( 'KAISE_CATALOG_DIR', plugin_dir_path( __FILE__ ) );
 define( 'KAISE_CATALOG_URL', plugin_dir_url( __FILE__ ) );
 
@@ -34,7 +31,6 @@ add_action( 'admin_init', function () {
     register_setting( 'kaise_catalog', 'kaise_catalog_api_url' );
     register_setting( 'kaise_catalog', 'kaise_catalog_gemini_key' );
     register_setting( 'kaise_catalog', 'kaise_catalog_results_per_page' );
-    register_setting( 'kaise_catalog', 'kaise_catalog_contact_url' );
 } );
 
 function kaise_catalog_settings_page() {
@@ -67,14 +63,6 @@ function kaise_catalog_settings_page() {
                             value="<?php echo esc_attr( get_option( 'kaise_catalog_results_per_page', 20 ) ); ?>" />
                     </td>
                 </tr>
-                <tr>
-                    <th>URL de contacto</th>
-                    <td>
-                        <input type="url" name="kaise_catalog_contact_url" class="regular-text"
-                            value="<?php echo esc_attr( get_option( 'kaise_catalog_contact_url', '' ) ); ?>" />
-                        <p class="description">URL de la página de contacto. Si se rellena, aparecerá el botón "Solicitar información" en la ficha de cada producto.</p>
-                    </td>
-                </tr>
             </table>
             <?php submit_button(); ?>
         </form>
@@ -102,36 +90,12 @@ add_action( 'wp_enqueue_scripts', function () {
         KAISE_CATALOG_VERSION
     );
     wp_enqueue_script(
-        'kc-data',
-        KAISE_CATALOG_URL . 'assets/kc-data.js',
-        [],
-        KAISE_CATALOG_VERSION,
-        true
-    );
-    wp_enqueue_script(
-        'kc-compat',
-        KAISE_CATALOG_URL . 'assets/kc-compat.js',
-        [ 'kc-data' ],
-        KAISE_CATALOG_VERSION,
-        true
-    );
-    wp_enqueue_script(
-        'kc-wizard',
-        KAISE_CATALOG_URL . 'assets/kc-wizard.js',
-        [ 'jquery', 'kc-compat' ],
-        KAISE_CATALOG_VERSION,
-        true
-    );
-    wp_enqueue_script(
         'kaise-catalog',
         KAISE_CATALOG_URL . 'assets/kaise-catalog.js',
-        [ 'jquery', 'kc-wizard' ],
+        [ 'jquery' ],
         KAISE_CATALOG_VERSION,
         true
     );
-    $api_url     = rtrim( get_option( 'kaise_catalog_api_url', '' ), '/' );
-    $api_base    = preg_replace( '#/api/v\d+$#', '', $api_url );
-
     wp_localize_script( 'kaise-catalog', 'KaiseCatalog', [
         'ajaxUrl'     => admin_url( 'admin-ajax.php' ),
         'nonce'       => wp_create_nonce( 'kaise_catalog' ),
@@ -139,8 +103,6 @@ add_action( 'wp_enqueue_scripts', function () {
         'hasAI'       => ! empty( $ai_key ),
         'showAI'      => true,
         'showFilters' => true,
-        'apiBase'     => $api_base,
-        'contactUrl'  => get_option( 'kaise_catalog_contact_url', '' ),
     ] );
 } );
 
@@ -155,9 +117,7 @@ add_shortcode( 'kaise_catalog', function ( $atts ) {
 
     // Los assets ya están encolados globalmente.
     // Solo sobreescribimos perPage/showAI/showFilters si el shortcode los cambia.
-    $ai_key     = get_option( 'kaise_catalog_gemini_key', '' );
-    $api_url_sc = rtrim( get_option( 'kaise_catalog_api_url', '' ), '/' );
-    $api_base_sc = preg_replace( '#/api/v\d+$#', '', $api_url_sc );
+    $ai_key = get_option( 'kaise_catalog_gemini_key', '' );
     wp_localize_script( 'kaise-catalog', 'KaiseCatalog', [
         'ajaxUrl'     => admin_url( 'admin-ajax.php' ),
         'nonce'       => wp_create_nonce( 'kaise_catalog' ),
@@ -165,8 +125,6 @@ add_shortcode( 'kaise_catalog', function ( $atts ) {
         'hasAI'       => ! empty( $ai_key ),
         'showAI'      => $atts['show_ai'] === 'true',
         'showFilters' => $atts['show_filters'] === 'true',
-        'apiBase'     => $api_base_sc,
-        'contactUrl'  => get_option( 'kaise_catalog_contact_url', '' ),
     ] );
 
     ob_start();
@@ -205,7 +163,7 @@ function kaise_ajax_ai_search() {
     $endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' . rawurlencode( $api_key );
 
     $response = wp_remote_post( $endpoint, [
-        'timeout' => 20,
+        'timeout' => 30,
         'headers' => [ 'Content-Type' => 'application/json' ],
         'body'    => wp_json_encode( [
             'contents' => [
@@ -280,7 +238,7 @@ function kaise_ajax_search_products() {
 
     $endpoint = $api_url . '/products?' . http_build_query( $params );
 
-    $response = wp_remote_get( $endpoint, array_merge( [ 'timeout' => 15 ], KAISE_LT_HEADERS ) );
+    $response = wp_remote_get( $endpoint, [ 'timeout' => 30 ] );
 
     if ( is_wp_error( $response ) ) {
         wp_send_json_error( [ 'message' => $response->get_error_message() ] );
@@ -311,64 +269,14 @@ function kaise_ajax_get_categories() {
         wp_send_json_success( $cached );
     }
 
-    $response = wp_remote_get( $api_url . '/categories/tree', array_merge( [ 'timeout' => 10 ], KAISE_LT_HEADERS ) );
+    $response = wp_remote_get( $api_url . '/categories/tree', [ 'timeout' => 30 ] );
 
     if ( is_wp_error( $response ) ) {
         wp_send_json_error( [ 'message' => $response->get_error_message() ] );
     }
 
-    $code = wp_remote_retrieve_response_code( $response );
     $body = json_decode( wp_remote_retrieve_body( $response ), true );
+    set_transient( 'kaise_catalog_categories', $body['data'] ?? [], HOUR_IN_SECONDS * 6 );
 
-    if ( $code !== 200 || empty( $body['data'] ) ) {
-        wp_send_json_error( [ 'message' => 'No se pudieron cargar las gammas (API: ' . $code . ')' ] );
-    }
-
-    set_transient( 'kaise_catalog_categories', $body['data'], HOUR_IN_SECONDS * 6 );
-    wp_send_json_success( $body['data'] );
-}
-
-// ─── AJAX: detalle de categoría (specs + features) ────────────────────────────
-
-add_action( 'wp_ajax_kaise_get_category_detail',        'kaise_ajax_get_category_detail' );
-add_action( 'wp_ajax_nopriv_kaise_get_category_detail', 'kaise_ajax_get_category_detail' );
-
-function kaise_ajax_get_category_detail() {
-    check_ajax_referer( 'kaise_catalog', 'nonce' );
-
-    $cat_id  = sanitize_text_field( wp_unslash( $_POST['category_id'] ?? '' ) );
-    if ( empty( $cat_id ) ) wp_send_json_error( [ 'message' => 'ID de categoría requerido' ] );
-
-    $api_url = rtrim( get_option( 'kaise_catalog_api_url', '' ), '/' );
-    $cache_key = 'kaise_cat_' . md5( $cat_id );
-    $cached    = get_transient( $cache_key );
-
-    if ( $cached !== false ) {
-        wp_send_json_success( $cached );
-    }
-
-    $lt         = array_merge( [ 'timeout' => 15 ], KAISE_LT_HEADERS );
-    $r_cat      = wp_remote_get( $api_url . '/categories/' . rawurlencode( $cat_id ), $lt );
-    $r_features = wp_remote_get( $api_url . '/categories/' . rawurlencode( $cat_id ) . '/features', $lt );
-
-    if ( is_wp_error( $r_cat ) ) {
-        wp_send_json_error( [ 'message' => 'Error categoría: ' . $r_cat->get_error_message() ] );
-    }
-    if ( is_wp_error( $r_features ) ) {
-        wp_send_json_error( [ 'message' => 'Error features: ' . $r_features->get_error_message() ] );
-    }
-
-    $cat_body  = json_decode( wp_remote_retrieve_body( $r_cat ), true );
-    $feat_body = json_decode( wp_remote_retrieve_body( $r_features ), true );
-
-    $cat      = $cat_body['data']  ?? [];
-    $features = $feat_body['data'] ?? [];
-
-    // No cachear si cat está vacío (posible fallo de red)
-    $result = [ 'category' => $cat, 'features' => $features ];
-    if ( ! empty( $cat ) ) {
-        set_transient( $cache_key, $result, HOUR_IN_SECONDS * 6 );
-    }
-
-    wp_send_json_success( $result );
+    wp_send_json_success( $body['data'] ?? [] );
 }
