@@ -11,7 +11,10 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-define( 'KAISE_CATALOG_VERSION', '1.0.0' );
+define( 'KAISE_CATALOG_VERSION', '1.0.7' );
+
+// Header requerido por localtunnel para saltar la pantalla de verificación
+define( 'KAISE_LT_HEADERS', [ 'headers' => [ 'bypass-tunnel-reminder' => '1' ] ] );
 define( 'KAISE_CATALOG_DIR', plugin_dir_path( __FILE__ ) );
 define( 'KAISE_CATALOG_URL', plugin_dir_url( __FILE__ ) );
 
@@ -31,6 +34,7 @@ add_action( 'admin_init', function () {
     register_setting( 'kaise_catalog', 'kaise_catalog_api_url' );
     register_setting( 'kaise_catalog', 'kaise_catalog_gemini_key' );
     register_setting( 'kaise_catalog', 'kaise_catalog_results_per_page' );
+    register_setting( 'kaise_catalog', 'kaise_catalog_contact_url' );
 } );
 
 function kaise_catalog_settings_page() {
@@ -63,6 +67,14 @@ function kaise_catalog_settings_page() {
                             value="<?php echo esc_attr( get_option( 'kaise_catalog_results_per_page', 20 ) ); ?>" />
                     </td>
                 </tr>
+                <tr>
+                    <th>URL de contacto</th>
+                    <td>
+                        <input type="url" name="kaise_catalog_contact_url" class="regular-text"
+                            value="<?php echo esc_attr( get_option( 'kaise_catalog_contact_url', '' ) ); ?>" />
+                        <p class="description">URL de la página de contacto. Si se rellena, aparecerá el botón "Solicitar información" en la ficha de cada producto.</p>
+                    </td>
+                </tr>
             </table>
             <?php submit_button(); ?>
         </form>
@@ -90,9 +102,30 @@ add_action( 'wp_enqueue_scripts', function () {
         KAISE_CATALOG_VERSION
     );
     wp_enqueue_script(
+        'kc-data',
+        KAISE_CATALOG_URL . 'assets/kc-data.js',
+        [],
+        KAISE_CATALOG_VERSION,
+        true
+    );
+    wp_enqueue_script(
+        'kc-compat',
+        KAISE_CATALOG_URL . 'assets/kc-compat.js',
+        [ 'kc-data' ],
+        KAISE_CATALOG_VERSION,
+        true
+    );
+    wp_enqueue_script(
+        'kc-wizard',
+        KAISE_CATALOG_URL . 'assets/kc-wizard.js',
+        [ 'jquery', 'kc-compat' ],
+        KAISE_CATALOG_VERSION,
+        true
+    );
+    wp_enqueue_script(
         'kaise-catalog',
         KAISE_CATALOG_URL . 'assets/kaise-catalog.js',
-        [ 'jquery' ],
+        [ 'jquery', 'kc-wizard' ],
         KAISE_CATALOG_VERSION,
         true
     );
@@ -106,7 +139,8 @@ add_action( 'wp_enqueue_scripts', function () {
         'hasAI'       => ! empty( $ai_key ),
         'showAI'      => true,
         'showFilters' => true,
-        'apiBase'     => $api_base,  // para reescribir URLs de imágenes localhost
+        'apiBase'     => $api_base,
+        'contactUrl'  => get_option( 'kaise_catalog_contact_url', '' ),
     ] );
 } );
 
@@ -121,7 +155,9 @@ add_shortcode( 'kaise_catalog', function ( $atts ) {
 
     // Los assets ya están encolados globalmente.
     // Solo sobreescribimos perPage/showAI/showFilters si el shortcode los cambia.
-    $ai_key = get_option( 'kaise_catalog_gemini_key', '' );
+    $ai_key     = get_option( 'kaise_catalog_gemini_key', '' );
+    $api_url_sc = rtrim( get_option( 'kaise_catalog_api_url', '' ), '/' );
+    $api_base_sc = preg_replace( '#/api/v\d+$#', '', $api_url_sc );
     wp_localize_script( 'kaise-catalog', 'KaiseCatalog', [
         'ajaxUrl'     => admin_url( 'admin-ajax.php' ),
         'nonce'       => wp_create_nonce( 'kaise_catalog' ),
@@ -129,6 +165,8 @@ add_shortcode( 'kaise_catalog', function ( $atts ) {
         'hasAI'       => ! empty( $ai_key ),
         'showAI'      => $atts['show_ai'] === 'true',
         'showFilters' => $atts['show_filters'] === 'true',
+        'apiBase'     => $api_base_sc,
+        'contactUrl'  => get_option( 'kaise_catalog_contact_url', '' ),
     ] );
 
     ob_start();
@@ -242,7 +280,7 @@ function kaise_ajax_search_products() {
 
     $endpoint = $api_url . '/products?' . http_build_query( $params );
 
-    $response = wp_remote_get( $endpoint, [ 'timeout' => 15 ] );
+    $response = wp_remote_get( $endpoint, array_merge( [ 'timeout' => 15 ], KAISE_LT_HEADERS ) );
 
     if ( is_wp_error( $response ) ) {
         wp_send_json_error( [ 'message' => $response->get_error_message() ] );
@@ -273,16 +311,21 @@ function kaise_ajax_get_categories() {
         wp_send_json_success( $cached );
     }
 
-    $response = wp_remote_get( $api_url . '/categories/tree', [ 'timeout' => 10 ] );
+    $response = wp_remote_get( $api_url . '/categories/tree', array_merge( [ 'timeout' => 10 ], KAISE_LT_HEADERS ) );
 
     if ( is_wp_error( $response ) ) {
         wp_send_json_error( [ 'message' => $response->get_error_message() ] );
     }
 
+    $code = wp_remote_retrieve_response_code( $response );
     $body = json_decode( wp_remote_retrieve_body( $response ), true );
-    set_transient( 'kaise_catalog_categories', $body['data'] ?? [], HOUR_IN_SECONDS * 6 );
 
-    wp_send_json_success( $body['data'] ?? [] );
+    if ( $code !== 200 || empty( $body['data'] ) ) {
+        wp_send_json_error( [ 'message' => 'No se pudieron cargar las gammas (API: ' . $code . ')' ] );
+    }
+
+    set_transient( 'kaise_catalog_categories', $body['data'], HOUR_IN_SECONDS * 6 );
+    wp_send_json_success( $body['data'] );
 }
 
 // ─── AJAX: detalle de categoría (specs + features) ────────────────────────────
@@ -304,8 +347,9 @@ function kaise_ajax_get_category_detail() {
         wp_send_json_success( $cached );
     }
 
-    $r_cat      = wp_remote_get( $api_url . '/categories/' . rawurlencode( $cat_id ), [ 'timeout' => 15 ] );
-    $r_features = wp_remote_get( $api_url . '/categories/' . rawurlencode( $cat_id ) . '/features', [ 'timeout' => 15 ] );
+    $lt         = array_merge( [ 'timeout' => 15 ], KAISE_LT_HEADERS );
+    $r_cat      = wp_remote_get( $api_url . '/categories/' . rawurlencode( $cat_id ), $lt );
+    $r_features = wp_remote_get( $api_url . '/categories/' . rawurlencode( $cat_id ) . '/features', $lt );
 
     if ( is_wp_error( $r_cat ) ) {
         wp_send_json_error( [ 'message' => 'Error categoría: ' . $r_cat->get_error_message() ] );

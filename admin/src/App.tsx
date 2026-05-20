@@ -7,6 +7,7 @@ import ProductDetail from './pages/ProductDetail';
 import Categories from './pages/Categories';
 import ProductTypes from './pages/ProductTypes';
 import Attributes from './pages/Attributes';
+import ApiReference from './pages/ApiReference';
 
 export default function App() {
   return (
@@ -21,6 +22,7 @@ export default function App() {
           <Route path="categories" element={<Categories />} />
           <Route path="product-types" element={<ProductTypes />} />
           <Route path="attributes" element={<Attributes />} />
+          <Route path="api-reference" element={<ApiReference />} />
         </Route>
       </Routes>
     </BrowserRouter>

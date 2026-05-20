@@ -167,10 +167,21 @@ export class ProductRepository extends BaseRepository {
       `SELECT DISTINCT ON (p.id) p.*,
          pav.attributes_json,
          COALESCE(
-           (SELECT jsonb_agg(jsonb_build_object('id', c2.id, 'name', c2.name, 'slug', c2.slug))
-            FROM product_categories pc2
-            JOIN categories c2 ON pc2.category_id = c2.id
-            WHERE pc2.product_id = p.id), '[]'::jsonb
+           (SELECT jsonb_agg(jsonb_build_object(
+             'id', c2.id, 'name', c2.name, 'slug', c2.slug,
+             'technology', c2.technology, 'plate_type', c2.plate_type,
+             'design_life_years', c2.design_life_years, 'cycles', c2.cycles,
+             'capacity_range', c2.capacity_range, 'applications', c2.applications,
+             'characteristics', c2.characteristics, 'eurobat', c2.eurobat,
+             'features', COALESCE(
+               (SELECT jsonb_agg(jsonb_build_object('id', cf.id, 'type', cf.type, 'label', cf.label, 'order', cf."order") ORDER BY cf."order")
+                FROM category_features cf WHERE cf.category_id = c2.id),
+               '[]'::jsonb
+             )
+           ))
+           FROM product_categories pc2
+           JOIN categories c2 ON pc2.category_id = c2.id
+           WHERE pc2.product_id = p.id), '[]'::jsonb
          ) AS categories,
          COALESCE(
            (SELECT jsonb_agg(jsonb_build_object('id', m.id, 'type', m.type, 'url', m.url, 'order', m."order")
@@ -204,13 +215,39 @@ export class ProductRepository extends BaseRepository {
       `SELECT
          p.*,
          pav.attributes_json,
-         jsonb_agg(DISTINCT jsonb_build_object('id', c.id, 'name', c.name, 'slug', c.slug)) FILTER (WHERE c.id IS NOT NULL) as categories,
-         jsonb_agg(DISTINCT jsonb_build_object('id', m.id, 'type', m.type, 'url', m.url, 'title', m.title, 'order', m."order")) FILTER (WHERE m.id IS NOT NULL) as media
+         COALESCE(
+           (SELECT jsonb_agg(
+             jsonb_build_object(
+               'id', c2.id, 'name', c2.name, 'slug', c2.slug,
+               'technology', c2.technology, 'plate_type', c2.plate_type,
+               'design_life_years', c2.design_life_years, 'cycles', c2.cycles,
+               'capacity_range', c2.capacity_range, 'applications', c2.applications,
+               'characteristics', c2.characteristics, 'eurobat', c2.eurobat,
+               'description', c2.description,
+               'features', COALESCE(
+                 (SELECT jsonb_agg(jsonb_build_object(
+                   'id', cf.id, 'type', cf.type, 'label', cf.label,
+                   'order', cf."order", 'suitability', cf.suitability
+                 ) ORDER BY cf."order")
+                  FROM category_features cf WHERE cf.category_id = c2.id),
+                 '[]'::jsonb
+               )
+             )
+           )
+            FROM product_categories pc2
+            JOIN categories c2 ON pc2.category_id = c2.id
+            WHERE pc2.product_id = p.id
+           ), '[]'::jsonb
+         ) AS categories,
+         COALESCE(
+           (SELECT jsonb_agg(jsonb_build_object(
+             'id', m.id, 'type', m.type, 'url', m.url, 'title', m.title, 'order', m."order"
+           ) ORDER BY m."order")
+            FROM media m WHERE m.product_id = p.id
+           ), '[]'::jsonb
+         ) AS media
        FROM products p
        LEFT JOIN product_attribute_values pav ON p.id = pav.product_id
-       LEFT JOIN product_categories pc ON p.id = pc.product_id
-       LEFT JOIN categories c ON pc.category_id = c.id
-       LEFT JOIN media m ON p.id = m.product_id
        WHERE p.id = $1
        GROUP BY p.id, pav.id`,
       [id]

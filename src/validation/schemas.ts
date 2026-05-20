@@ -57,7 +57,7 @@ export const addMediaSchema = Joi.object({
 
 export const listProductsQuerySchema = Joi.object({
   page: Joi.number().integer().min(1).default(1),
-  per_page: Joi.number().integer().min(1).max(100).default(20),
+  per_page: Joi.number().integer().min(1).max(500).default(20),
   search: Joi.string().optional(),
   category_id: Joi.string().uuid().optional(),
   product_type_id: Joi.string().uuid().optional(),

@@ -1,8 +1,18 @@
-/* global KaiseCatalog, jQuery */
+/* global KaiseCatalog, jQuery, KC */
+/**
+ * kaise-catalog.js — Main plugin logic: search, results, modal, AI, filter tab.
+ *
+ * Dependencies (loaded before this file):
+ *   kc-data.js   → KC.GAMMA_DATA, KC.GAMMA_LABELS, KC.escHtml, …
+ *   kc-compat.js → KC.Compat.*
+ *   kc-wizard.js → KC.Wizard (bound in init via KC.Wizard.init($wrap))
+ *
+ * Exposes KC.Search so kc-wizard.js can call doSearch and runWizardSearch.
+ */
 (function ($) {
     'use strict';
 
-    // ── State ────────────────────────────────────────────────────────────────
+    // ── State ─────────────────────────────────────────────────────────────────
 
     const state = {
         page:    1,
@@ -11,29 +21,27 @@
         params:  {},
         loading: false,
         sort:    '',
-        // Wizard state
-        wizardApp:  '',
-        wizardTech: '',
-        wizardVolt: '',
+        currentPageProducts: [],
+        currentProductIdx:   0,
     };
 
     // ── DOM refs ─────────────────────────────────────────────────────────────
 
-    const $wrap         = $('#kaise-catalog');
-    const $aiInput      = $('#kc-ai-input');
-    const $aiBtn        = $('#kc-ai-btn');
-    const $aiInterp     = $('#kc-ai-interpretation');
-    const $status       = $('#kc-status');
-    const $results      = $('#kc-results');
-    const $grid         = $('#kc-grid');
-    const $pagination   = $('#kc-pagination');
-    const $resultCount  = $('#kc-results-count');
-    const $modal        = $('#kc-modal');
-    const $modalContent = $('#kc-modal-content');
-    const $sort         = $('#kc-sort');
+    const $wrap          = $('#kaise-catalog');
+    const $aiInput       = $('#kc-ai-input');
+    const $aiBtn         = $('#kc-ai-btn');
+    const $aiInterp      = $('#kc-ai-interpretation');
+    const $status        = $('#kc-status');
+    const $results       = $('#kc-results');
+    const $grid          = $('#kc-grid');
+    const $pagination    = $('#kc-pagination');
+    const $resultCount   = $('#kc-results-count');
+    const $modal         = $('#kc-modal');
+    const $modalContent  = $('#kc-modal-content');
+    const $sort          = $('#kc-sort');
     const $activeFilters = $('#kc-active-filters');
 
-    // Advanced filter inputs
+    // Advanced filter inputs (tab 3)
     const filters = {
         search:      $('#kc-search'),
         voltage:     $('#kc-voltage'),
@@ -46,10 +54,25 @@
         eurobat:     $('#kc-eurobat'),
     };
 
+    // catId (string) → slug (string). Populated by loadCategories().
+    const _catSlugMap = {};
+
+    // ── KC.Search bridge (consumed by kc-wizard.js) ──────────────────────────
+    // Function references are hoisted, so this object is always valid.
+
+    window.KC = window.KC || {};
+    KC.Search = {
+        categories:          [],    // populated by loadCategories()
+        doSearch:            doSearch,
+        renderActiveFilters: renderActiveFilters,
+        runWizardSearch:     runWizardSearch,
+    };
+
     // ── Init ─────────────────────────────────────────────────────────────────
 
     function init() {
         loadCategories();
+        KC.Wizard.init($wrap);      // wizard reads KC.Search.*
         bindEvents();
         doSearch({ status: 'published' });
     }
@@ -70,7 +93,7 @@
 
     function bindEvents() {
         bindTabs();
-        bindWizard();
+        bindFilterTab();
 
         // AI search
         $aiBtn.on('click', handleAISearch);
@@ -104,105 +127,160 @@
 
         // Modal close
         $('#kc-modal .kc-modal-backdrop, #kc-modal .kc-modal-close').on('click', closeModal);
-        $(document).on('keydown', function (e) { if (e.key === 'Escape') closeModal(); });
-    }
-
-    // ── Wizard ────────────────────────────────────────────────────────────────
-
-    function bindWizard() {
-        // Step 1: application tiles
-        $wrap.on('click', '.kc-app-tile', function () {
-            state.wizardApp  = $(this).data('app')  || '';
-            state.wizardTech = $(this).data('tech') || '';
-
-            // Pre-select technology pill if tile has default tech
-            if (state.wizardTech) {
-                $('#kc-tech-pills .kc-tech-pill').removeClass('is-active');
-                $(`#kc-tech-pills .kc-tech-pill[data-tech="${state.wizardTech}"]`).addClass('is-active');
-            }
-
-            const appLabel = $(this).find('.kc-app-name').text();
-            $('#kc-step2-app-label').text(appLabel ? '— ' + appLabel : '');
-
-            // Show step 2
-            $('#kc-step-1').attr('hidden', '');
-            $('#kc-step-2').removeAttr('hidden');
-
-            // If "Ver todo" — search immediately
-            if (!state.wizardApp && !state.wizardTech) {
-                runWizardSearch();
+        $(document).on('keydown', function (e) {
+            if (e.key === 'Escape') closeModal();
+            if ($modal.attr('hidden') === undefined) {
+                if (e.key === 'ArrowLeft')  navigateModal(-1);
+                if (e.key === 'ArrowRight') navigateModal(1);
             }
         });
 
-        // Back to step 1
-        $('#kc-step2-back').on('click', function () {
-            $('#kc-step-2').attr('hidden', '');
-            $('#kc-step-1').removeAttr('hidden');
-            resetWizardInputs();
-        });
-
-        // Voltage pills
-        $wrap.on('click', '#kc-volt-pills .kc-volt-pill', function () {
-            $('#kc-volt-pills .kc-volt-pill').removeClass('is-active');
-            $(this).addClass('is-active');
-            state.wizardVolt = $(this).data('v') || '';
-        });
-
-        // Tech pills
-        $wrap.on('click', '#kc-tech-pills .kc-tech-pill', function () {
-            $('#kc-tech-pills .kc-tech-pill').removeClass('is-active');
-            $(this).addClass('is-active');
-            state.wizardTech = $(this).data('tech') || '';
-        });
-
-        // Capacity quick buttons
-        $wrap.on('click', '.kc-cap-btn', function () {
-            $('.kc-cap-btn').removeClass('is-active');
-            $(this).addClass('is-active');
-            const min = $(this).data('min');
-            const max = $(this).data('max');
-            $('#kc-w-cap-min').val(min || '');
-            $('#kc-w-cap-max').val(max || '');
-        });
-
-        // Wizard search button
-        $('#kc-wizard-search').on('click', runWizardSearch);
-
-        // Wizard reset
-        $('#kc-wizard-reset').on('click', resetWizardInputs);
+        // Modal prev/next
+        $('#kc-modal-prev').on('click', function () { navigateModal(-1); });
+        $('#kc-modal-next').on('click', function () { navigateModal(1); });
     }
 
-    function runWizardSearch() {
-        const params = { status: 'published' };
-        if (state.wizardApp)  params.application  = state.wizardApp;
-        if (state.wizardTech) params.technology    = state.wizardTech;
-        if (state.wizardVolt) params.voltage       = state.wizardVolt;
+    // ── Filter tab (tab 3) — algorithm integration ────────────────────────────
 
-        const capMin = $('#kc-w-cap-min').val();
-        const capMax = $('#kc-w-cap-max').val();
-        if (capMin) params.capacity_min = capMin;
-        if (capMax) params.capacity_max = capMax;
-        if ($('#kc-w-eurobat').is(':checked')) params.eurobat = 'true';
-        const plate = $('#kc-w-plate').val();
-        if (plate) params.plate_type = plate;
-
-        state.page = 1;
-        renderActiveFilters(params);
-        doSearch(params);
+    function bindFilterTab() {
+        filters.technology.on('change', onFilterCompatChange);
+        filters.plate_type.on('change', onFilterCompatChange);
+        filters.application.on('change', onFilterCompatChange);
+        filters.category.on('change', onFilterCompatChange);
     }
 
-    function resetWizardInputs() {
-        state.wizardVolt = '';
-        state.wizardTech = state.wizardApp ? $('#kc-app-tile.is-active').data('tech') || '' : '';
-        $('#kc-volt-pills .kc-volt-pill').removeClass('is-active');
-        $('#kc-volt-pills .kc-volt-pill[data-v=""]').addClass('is-active');
-        $('#kc-tech-pills .kc-tech-pill').removeClass('is-active');
-        $('#kc-tech-pills .kc-tech-pill[data-tech=""]').addClass('is-active');
-        $('#kc-w-cap-min, #kc-w-cap-max').val('');
-        $('#kc-w-eurobat').prop('checked', false);
-        $('#kc-w-plate').val('');
-        $('.kc-cap-btn').removeClass('is-active');
-        $('.kc-cap-btn[data-min=""]').addClass('is-active');
+    /** Returns slug for currently selected category option, or '' if none. */
+    function _selectedGammaSlug() {
+        var catId = filters.category.val() || '';
+        return catId ? (_catSlugMap[catId] || '') : '';
+    }
+
+    /** Returns slug for a given category option element (by its value). */
+    function _slugForCatId(catId) {
+        return catId ? (_catSlugMap[String(catId)] || '') : '';
+    }
+
+    function onFilterCompatChange() {
+        var tech  = filters.technology.val() || null;
+        var plate = filters.plate_type.val() || null;
+        var app   = filters.application.val() || null;
+
+        // ── Gamma → tech/plate derivation ────────────────────────────────────
+        var selSlug    = _selectedGammaSlug();
+        var gammaEntry = selSlug
+            ? KC.GAMMA_DATA.find(function (g) { return g.id === selSlug; })
+            : null;
+
+        var gammaTech  = gammaEntry ? (gammaEntry.isLeadCarbon ? 'Lead Carbon' : gammaEntry.technology) : null;
+        var gammaPlate = gammaEntry ? gammaEntry.plate : null;
+
+        // Effective tech/plate: manual selection takes priority, gamma-derived as fallback
+        var effTech  = tech  || gammaTech;
+        var effPlate = plate || gammaPlate;
+
+        // ── Compute compatible sets ───────────────────────────────────────────
+        // For tech/plate/app dropdowns: use effective constraints
+        var availTechs  = gammaEntry ? new Set([gammaTech])  : KC.Compat.getAvailableTechs(effPlate, app);
+        var availPlates = gammaEntry ? new Set([gammaPlate]) : KC.Compat.getAvailablePlates(effTech, app);
+        // When gamma selected: only show apps compatible with THAT gamma specifically.
+        // When no gamma: show apps compatible with current tech+plate.
+        var availApps = gammaEntry
+            ? KC.Compat.getAvailableAppsForGamma(gammaEntry.id)
+            : KC.Compat.getAvailableApps(effTech, effPlate);
+
+        // For gamma dropdown: only use manual tech+plate+app (no circular dependency)
+        var gammasForCat   = KC.Compat.computeValidGammas(tech, plate, app);
+        var validForCatIds = new Set(gammasForCat.map(function (g) { return g.id; }));
+
+        // Valid gammas for counter and voltage: full effective constraints
+        var validGammas = KC.Compat.computeValidGammas(effTech, effPlate, app);
+
+        KC.Compat.logCompatibility('Filtros Técnicos', effTech, effPlate, app, selSlug || null);
+
+        // ── Tecnología ───────────────────────────────────────────────────────
+        filters.technology.find('option').each(function () {
+            var v = $(this).val();
+            if (!v) { $(this).prop('disabled', false); return; }
+            $(this).prop('disabled', !availTechs.has(v));
+        });
+        if (tech && !availTechs.has(tech)) { filters.technology.val(''); tech = null; }
+
+        // ── Tipo de placa ────────────────────────────────────────────────────
+        filters.plate_type.find('option').each(function () {
+            var v = $(this).val();
+            if (!v) { $(this).prop('disabled', false); return; }
+            $(this).prop('disabled', !availPlates.has(v));
+        });
+        if (plate && !availPlates.has(plate)) { filters.plate_type.val(''); plate = null; }
+
+        // ── Aplicación ───────────────────────────────────────────────────────
+        filters.application.find('option').each(function () {
+            var v = $(this).val();
+            if (!v) { $(this).prop('disabled', false); return; }
+            $(this).prop('disabled', !availApps.has(v));
+        });
+        if (app && !availApps.has(app)) { filters.application.val(''); app = null; }
+
+        // ── Gamma / category ─────────────────────────────────────────────────
+        filters.category.find('option').each(function () {
+            var optId = $(this).val();
+            if (!optId) { $(this).prop('disabled', false); return; }
+            var slug  = _slugForCatId(optId);
+            $(this).prop('disabled', slug ? !validForCatIds.has(slug) : false);
+        });
+        // Auto-deselect if now incompatible
+        if (selSlug && !validForCatIds.has(selSlug)) {
+            filters.category.val('');
+            selSlug    = '';
+            gammaEntry = null;
+        }
+
+        // ── Voltaje ───────────────────────────────────────────────────────────
+        var activeSlug = _selectedGammaSlug(); // may have been cleared above
+        var allowedVolt;
+
+        if (activeSlug && KC.GAMMA_VOLTAGES[activeSlug]) {
+            // Specific gamma selected → only its voltages
+            allowedVolt = new Set(KC.GAMMA_VOLTAGES[activeSlug].map(String));
+        } else if (validGammas.length > 0) {
+            // Union of voltages from all compatible gammas
+            allowedVolt = new Set();
+            validGammas.forEach(function (g) {
+                (KC.GAMMA_VOLTAGES[g.id] || []).forEach(function (v) { allowedVolt.add(String(v)); });
+            });
+        } else {
+            allowedVolt = null; // no compat restriction
+        }
+
+        var curVolt = filters.voltage.val();
+        filters.voltage.find('option').each(function () {
+            var v = $(this).val();
+            if (!v) { $(this).prop('disabled', false); return; }
+            $(this).prop('disabled', allowedVolt ? !allowedVolt.has(v) : false);
+        });
+        if (curVolt && allowedVolt && !allowedVolt.has(curVolt)) {
+            filters.voltage.val('');
+        }
+
+        // ── Indicator ────────────────────────────────────────────────────────
+        var $ind = $('#kc-filter-gamma-indicator');
+        if (!$ind.length) {
+            $ind = $('<div id="kc-filter-gamma-indicator" class="kc-gamma-counter"></div>');
+            $('#kc-filter-actions-row').prepend($ind);
+        }
+
+        var anyActive = filters.technology.val() || filters.plate_type.val() ||
+                        filters.application.val() || filters.category.val();
+        if (anyActive) {
+            var count = activeSlug ? 1 : validGammas.length;
+            $ind.html(count > 0
+                    ? '<span class="kc-gc-icon">🔋</span> ' + count + (count === 1 ? ' tipo compatible' : ' tipos compatibles')
+                    : '⚠ Sin combinación válida — cambia algún filtro')
+                .toggleClass('is-zero', count === 0)
+                .show();
+        } else {
+            $ind.hide();
+        }
     }
 
     // ── Active filter chips ───────────────────────────────────────────────────
@@ -216,7 +294,7 @@
         plate_type:   'Placa',
         eurobat:      'Eurobat',
         search:       'Búsqueda',
-        category_id:  'Gamma',
+        category_id:  'Gama',
     };
 
     function renderActiveFilters(params) {
@@ -224,8 +302,12 @@
             .filter(([k]) => k !== 'status' && PARAM_LABELS[k])
             .map(function ([k, v]) {
                 const label = PARAM_LABELS[k] || k;
-                const val   = v === 'true' ? '✓' : v;
-                return `<span class="kc-chip">${label}: <strong>${escHtml(String(val))}</strong><button class="kc-chip-remove" data-key="${escHtml(k)}" aria-label="Eliminar filtro">✕</button></span>`;
+                let display = v === 'true' ? '✓' : v;
+                if (k === 'category_id') {
+                    const text = filters.category.find('option[value="' + v + '"]').text();
+                    if (text) display = text;
+                }
+                return `<span class="kc-chip">${label}: <strong>${escHtml(String(display))}</strong><button class="kc-chip-remove" data-key="${escHtml(k)}" aria-label="Eliminar filtro">✕</button></span>`;
             });
 
         if (chips.length) {
@@ -240,6 +322,31 @@
         state.page = 1;
         renderActiveFilters(state.params);
         doSearch(state.params);
+    }
+
+    // ── Wizard search (called from KC.Wizard via KC.Search.runWizardSearch) ───
+
+    function runWizardSearch() {
+        const ws = KC.Wizard.state;
+
+        const params = { status: 'published' };
+        if (ws.app)        params.application  = ws.app;
+        if (ws.tech)       params.technology    = ws.tech;
+        if (ws.volt)       params.voltage       = ws.volt;
+        if (ws.categoryId) params.category_id   = ws.categoryId;
+        if (ws.capMin)     params.capacity_min  = ws.capMin;
+        if (ws.capMax)     params.capacity_max  = ws.capMax;
+
+        // Display version: show human-readable gamma name instead of numeric ID
+        const displayParams = Object.assign({}, params);
+        if (ws.gamma && ws.categoryId) {
+            const lbl = KC.GAMMA_LABELS[ws.gamma];
+            if (lbl) displayParams.category_id = lbl.name;
+        }
+
+        state.page = 1;
+        renderActiveFilters(displayParams);
+        doSearch(params);
     }
 
     // ── AI Search ─────────────────────────────────────────────────────────────
@@ -307,6 +414,12 @@
         $aiInput.val('');
         $aiInterp.hide();
         $activeFilters.attr('hidden', '').empty();
+        $('#kc-filter-gamma-indicator').hide();
+        filters.technology.find('option').prop('disabled', false);
+        filters.plate_type.find('option').prop('disabled', false);
+        filters.application.find('option').prop('disabled', false);
+        filters.category.find('option').prop('disabled', false);
+        filters.voltage.find('option').prop('disabled', false);
         state.page = 1;
         doSearch({ status: 'published' });
     }
@@ -322,15 +435,16 @@
         add('capacity_max', filters.cap_max.val());
         add('technology',   filters.technology.val());
         add('plate_type',   filters.plate_type.val());
-        add('application',  filters.application.val());
         add('category_id',  filters.category.val());
+        add('application',  filters.application.val());
         if (filters.eurobat.is(':checked')) p.eurobat = 'true';
+
         return p;
     }
 
     // ── Search ────────────────────────────────────────────────────────────────
 
-    let allResults = [];   // todos los resultados de la búsqueda actual (paginación local)
+    let allResults = [];
 
     function doSearch(params) {
         state.params = Object.assign({}, params);
@@ -339,7 +453,6 @@
         showStatus('loading', '⏳ Buscando productos…');
         $results.hide();
 
-        // Fetch max por página para minimizar peticiones (API max = 100)
         const fetchParams = Object.assign({}, state.params, { page: 1, per_page: 100 });
 
         $.ajax({
@@ -348,7 +461,11 @@
             data:   Object.assign({ action: 'kaise_search_products', nonce: KaiseCatalog.nonce }, fetchParams),
             success: function (res) {
                 if (!res.success) {
-                    showStatus('error', res.data.message || 'Error al obtener productos.');
+                    showStatus('error', res.data?.message || 'Error al obtener productos.');
+                    return;
+                }
+                if (!res.data) {
+                    showStatus('error', 'La API no responde. Comprueba que el servidor está activo y la URL configurada es correcta.');
                     return;
                 }
                 const meta  = res.data.meta?.pagination || {};
@@ -357,7 +474,6 @@
                 allResults  = res.data.data || [];
 
                 if (total > 100 && pages > 1) {
-                    // Más de 100 resultados: fetch páginas restantes en secuencia
                     fetchRemainingPages(fetchParams, pages, total);
                 } else {
                     renderLocalResults();
@@ -419,14 +535,16 @@
         $resultCount.html(`<strong>${total}</strong> producto${total !== 1 ? 's' : ''} encontrado${total !== 1 ? 's' : ''}`);
 
         const sorted = sortProducts([...products]);
+        state.currentPageProducts = sorted;
+
         $grid.html(sorted.map(renderCard).join(''));
         renderPagination(pages);
         $results.show();
 
         $grid.find('.kc-card').on('click', function () {
-            const id = $(this).data('id');
-            const product = products.find(p => p.id === id);
-            if (product) openModal(product);
+            const id  = $(this).data('id');
+            const idx = sorted.findIndex(p => String(p.id) === String(id));
+            if (idx !== -1) openModal(sorted[idx], idx);
         });
     }
 
@@ -442,7 +560,6 @@
 
     function fixImgUrl(url) {
         if (!url) return url;
-        // Reescribe localhost:3000 con el dominio real de la API (localtunnel/ngrok)
         const base = (KaiseCatalog.apiBase || '').replace(/\/$/, '');
         if (base && url.match(/^https?:\/\/localhost(:\d+)?/)) {
             return url.replace(/^https?:\/\/localhost(:\d+)?/, base);
@@ -463,7 +580,7 @@
         const pills   = buildPills(attrs);
         const mainImg = getMainImage(p);
         const imgTag  = mainImg
-            ? `<img class="kc-card-img" src="${escHtml(mainImg)}" alt="${escHtml(p.name)}" loading="lazy" onerror="this.parentElement.innerHTML='<div class=kc-card-img-placeholder>⚡</div>'">`
+            ? `<div class="kc-card-img-wrap"><img class="kc-card-img" src="${escHtml(mainImg)}" alt="${escHtml(p.name)}" loading="lazy" onerror="this.parentElement.innerHTML='<div class=kc-card-img-placeholder>⚡</div>'"></div>`
             : `<div class="kc-card-img-placeholder">⚡</div>`;
 
         return `
@@ -531,13 +648,25 @@
 
     // ── Modal ─────────────────────────────────────────────────────────────────
 
-    function openModal(p) {
-        const gamma      = p.categories?.[0]?.name || '';
-        const catId      = p.categories?.[0]?.id   || '';
-        const attrs      = p.attributes_json || {};
-        const mediaLinks = buildMediaLinks(p.media || []);
+    function openModal(p, idx) {
+        state.currentProductIdx = idx != null ? idx : 0;
+        const products = state.currentPageProducts;
+        const total    = products.length;
 
-        $modalContent.html(renderModalSkeleton(p, gamma, attrs, mediaLinks));
+        const $prev = $('#kc-modal-prev');
+        const $next = $('#kc-modal-next');
+        const $pos  = $('#kc-modal-pos');
+
+        $prev.prop('disabled', state.currentProductIdx <= 0);
+        $next.prop('disabled', state.currentProductIdx >= total - 1);
+        $pos.text((state.currentProductIdx + 1) + ' / ' + total);
+
+        const gamma  = p.categories?.[0]?.name || '';
+        const catId  = p.categories?.[0]?.id   || '';
+        const attrs  = p.attributes_json || {};
+        const pdfUrl = getPdfUrl(p);
+
+        $modalContent.html(renderModalSkeleton(p, gamma, attrs, pdfUrl));
         $modal.removeAttr('hidden');
         $modal.find('.kc-modal-close').focus();
         $('body').css('overflow', 'hidden');
@@ -562,36 +691,69 @@
             },
             error: function (xhr) {
                 $('#kc-cat-section').removeAttr('hidden');
-                $('#kc-cat-specs').html(`<p class="kc-no-data kc-error-msg">⚠ Error de conexión (${xhr.status}). Comprueba que la API está activa.</p>`);
+                $('#kc-cat-specs').html(`<p class="kc-no-data kc-error-msg">⚠ Error de conexión (${xhr.status}).</p>`);
             },
         });
     }
 
-    function renderModalSkeleton(p, gamma, attrs, mediaLinks) {
+    function navigateModal(dir) {
+        const products = state.currentPageProducts;
+        const newIdx   = state.currentProductIdx + dir;
+        if (newIdx < 0 || newIdx >= products.length) return;
+        openModal(products[newIdx], newIdx);
+    }
+
+    function getPdfUrl(p) {
+        const media = p.media || [];
+        const pdf   = media.find(m => m.type === 'pdf');
+        return pdf ? fixImgUrl(pdf.url) : null;
+    }
+
+    function renderModalSkeleton(p, gamma, attrs, pdfUrl) {
+        const mainImg  = getMainImage(p);
         const attrRows = buildAttrRows(attrs);
+
+        const imgHtml = mainImg
+            ? `<div class="kc-modal-img-wrap"><img class="kc-modal-img" src="${escHtml(mainImg)}" alt="${escHtml(p.name)}" onerror="this.parentElement.innerHTML='<div class=kc-modal-img-placeholder>⚡</div>'"></div>`
+            : '';
+
+        const contactUrl = (KaiseCatalog.contactUrl || '') + '?producto=' + encodeURIComponent(p.name);
+        const actionsPdf = pdfUrl
+            ? `<a href="${escHtml(pdfUrl)}" class="kc-btn kc-btn-primary" target="_blank" rel="noopener">📄 Ficha técnica</a>`
+            : '';
+        const actionsContact = KaiseCatalog.contactUrl
+            ? `<a href="${escHtml(contactUrl)}" class="kc-btn kc-btn-ghost">✉ Solicitar información</a>`
+            : '';
+
         return `
+        ${imgHtml}
+        <div class="kc-modal-header-info">
             ${gamma ? `<div class="kc-detail-gamma">${escHtml(gamma)}</div>` : ''}
             <div class="kc-detail-name">${escHtml(p.name)}</div>
             ${p.description ? `<p class="kc-detail-desc">${escHtml(p.description)}</p>` : ''}
+        </div>
 
-            <details class="kc-modal-section" open>
+        ${attrRows.length
+            ? `<details class="kc-modal-section" open>
                 <summary>Especificaciones del producto</summary>
-                ${attrRows.length ? `<div class="kc-detail-attrs">${attrRows.join('')}</div>` : '<p class="kc-no-data">Sin especificaciones.</p>'}
+                <div class="kc-detail-attrs">${attrRows.join('')}</div>
+               </details>`
+            : ''}
+
+        ${(actionsPdf || actionsContact)
+            ? `<div class="kc-modal-actions">${actionsPdf}${actionsContact}</div>`
+            : ''}
+
+        <div id="kc-cat-section" hidden>
+            <details class="kc-modal-section" open>
+                <summary>Especificaciones técnicas de la gamma</summary>
+                <div id="kc-cat-specs"><p class="kc-no-data">Cargando…</p></div>
             </details>
-
-            <div id="kc-cat-section" hidden>
-                <details class="kc-modal-section" open>
-                    <summary>Especificaciones técnicas de la gamma</summary>
-                    <div id="kc-cat-specs"><p class="kc-no-data">Cargando…</p></div>
-                </details>
-                <details class="kc-modal-section">
-                    <summary>Aplicaciones y compatibilidad</summary>
-                    <div id="kc-cat-features"><p class="kc-no-data">Cargando…</p></div>
-                </details>
-            </div>
-
-            ${mediaLinks ? `<div class="kc-detail-media">${mediaLinks}</div>` : ''}
-        `;
+            <details class="kc-modal-section">
+                <summary>Aplicaciones y compatibilidad</summary>
+                <div id="kc-cat-features"><p class="kc-no-data">Cargando…</p></div>
+            </details>
+        </div>`;
     }
 
     function renderCatSpecs(cat) {
@@ -638,10 +800,10 @@
                     }
                     const vid = extractYouTubeId(url);
                     if (!vid) return '';
-                    const isShort   = url.includes('/shorts/');
-                    const thumb     = `https://img.youtube.com/vi/${vid}/mqdefault.jpg`;
-                    const embedUrl  = `https://www.youtube.com/embed/${vid}`;
-                    const badge     = isShort ? '<span class="kc-video-badge">Short</span>' : '';
+                    const isShort  = url.includes('/shorts/');
+                    const thumb    = `https://img.youtube.com/vi/${vid}/mqdefault.jpg`;
+                    const embedUrl = `https://www.youtube.com/embed/${vid}`;
+                    const badge    = isShort ? '<span class="kc-video-badge">Short</span>' : '';
                     return `<div class="kc-video-card" data-embed="${escHtml(embedUrl)}" data-title="${escHtml(title)}">
                         <div class="kc-video-thumb">
                             <img src="${escHtml(thumb)}" alt="${escHtml(title)}" loading="lazy">
@@ -691,13 +853,10 @@
 
     function extractYouTubeId(url) {
         if (!url) return null;
-        // youtu.be/ID
         let m = url.match(/youtu\.be\/([A-Za-z0-9_-]{11})/);
         if (m) return m[1];
-        // youtube.com/shorts/ID
         m = url.match(/youtube\.com\/shorts\/([A-Za-z0-9_-]{11})/);
         if (m) return m[1];
-        // youtube.com/watch?v=ID
         m = url.match(/[?&]v=([A-Za-z0-9_-]{11})/);
         if (m) return m[1];
         return null;
@@ -708,32 +867,33 @@
         $('body').css('overflow', '');
     }
 
+    // ── Product attribute rows ────────────────────────────────────────────────
+
     const ATTR_LABELS = {
-        voltage:               { label: 'Tensión',             unit: 'V'     },
-        capacity:              { label: 'Capacidad C100',      unit: 'Ah'    },
-        capacity_nominal_10h:  { label: 'Capacidad C10',       unit: 'Ah'    },
-        capacity_nominal_c100: { label: 'Capacidad C100',      unit: 'Ah'    },
-        capacity_nominal_c20:  { label: 'Capacidad C20',       unit: 'Ah'    },
-        capacity_rate:         { label: 'Régimen',             unit: ''      },
-        weight:                { label: 'Peso',                unit: 'kg'    },
-        length:                { label: 'Largo',               unit: 'mm'    },
-        width:                 { label: 'Ancho',               unit: 'mm'    },
-        height:                { label: 'Alto',                unit: 'mm'    },
-        total_height:          { label: 'Alto total',          unit: 'mm'    },
-        terminal_type:         { label: 'Terminal',            unit: ''      },
-        model_code:            { label: 'Código modelo',       unit: ''      },
-        self_discharge:        { label: 'Autodescarga',        unit: '%/mes' },
-        design_life:           { label: 'Vida de diseño',      unit: 'años'  },
-        cycles:                { label: 'Ciclos',              unit: ''      },
-        short_circuit_current: { label: 'Corriente CC',        unit: 'A'     },
-        internal_resistance:   { label: 'Resistencia interna', unit: 'mΩ'    },
-        charge_voltage_float:  { label: 'Tensión flotación',   unit: 'V'     },
-        charge_voltage_cycle:  { label: 'Tensión ciclo',       unit: 'V'     },
-        max_charge_current:    { label: 'Corriente carga máx.',unit: 'A'     },
+        voltage:               { label: 'Tensión',              unit: 'V'     },
+        capacity:              { label: 'Capacidad C100',       unit: 'Ah'    },
+        capacity_nominal_10h:  { label: 'Capacidad C10',        unit: 'Ah'    },
+        capacity_nominal_c100: { label: 'Capacidad C100',       unit: 'Ah'    },
+        capacity_nominal_c20:  { label: 'Capacidad C20',        unit: 'Ah'    },
+        capacity_rate:         { label: 'Régimen',              unit: ''      },
+        weight:                { label: 'Peso',                 unit: 'kg'    },
+        length:                { label: 'Largo',                unit: 'mm'    },
+        width:                 { label: 'Ancho',                unit: 'mm'    },
+        height:                { label: 'Alto',                 unit: 'mm'    },
+        total_height:          { label: 'Alto total',           unit: 'mm'    },
+        terminal_type:         { label: 'Terminal',             unit: ''      },
+        model_code:            { label: 'Código modelo',        unit: ''      },
+        self_discharge:        { label: 'Autodescarga',         unit: '%/mes' },
+        design_life:           { label: 'Vida de diseño',       unit: 'años'  },
+        cycles:                { label: 'Ciclos',               unit: ''      },
+        short_circuit_current: { label: 'Corriente CC',         unit: 'A'     },
+        internal_resistance:   { label: 'Resistencia interna',  unit: 'mΩ'    },
+        charge_voltage_float:  { label: 'Tensión flotación',    unit: 'V'     },
+        charge_voltage_cycle:  { label: 'Tensión ciclo',        unit: 'V'     },
+        max_charge_current:    { label: 'Corriente carga máx.', unit: 'A'     },
     };
 
-    const ATTR_SKIP = new Set(['model_code']);
-
+    const ATTR_SKIP  = new Set(['model_code']);
     const ATTR_ORDER = ['voltage','capacity','capacity_nominal_10h','capacity_nominal_c100',
         'capacity_rate','weight','length','width','height','total_height','terminal_type'];
 
@@ -759,14 +919,6 @@
             });
     }
 
-    function buildMediaLinks(media) {
-        if (!media.length) return '';
-        return media.map(function (m) {
-            const icon = m.type === 'pdf' ? '📄' : '🖼';
-            return `<a href="${escHtml(m.url)}" target="_blank" rel="noopener">${icon} ${escHtml(m.title || m.type)}</a>`;
-        }).join('');
-    }
-
     // ── Categories ────────────────────────────────────────────────────────────
 
     function loadCategories() {
@@ -775,11 +927,22 @@
             method: 'POST',
             data: { action: 'kaise_get_categories', nonce: KaiseCatalog.nonce },
             success: function (res) {
-                if (!res.success) return;
-                const leaves = (res.data || []).filter(c => c.level >= 2);
-                leaves.forEach(function (c) {
+                if (!res.success || !res.data) return;
+                const gammas = res.data.filter(c => c.level >= 3);
+                KC.Search.categories = gammas;  // wizard paso 4 reads this for category_id lookup
+                // Debug: log first category to verify slug field name
+                if (gammas.length > 0) {
+                    console.log('📦 Kaise categories — primer objeto:', gammas[0]);
+                    console.log('📦 Slug field check → id:', gammas[0].id, '| slug:', gammas[0].slug, '| name:', gammas[0].name);
+                }
+                gammas.forEach(function (c) {
+                    // API slugs use "kaise-" prefix (e.g. "kaise-opzv") but
+                    // KC.GAMMA_DATA uses bare IDs ("opzv"). Strip prefix here
+                    // so all compat lookups work without changes elsewhere.
+                    _catSlugMap[String(c.id)] = (c.slug || '').replace(/^kaise-/, '');
                     filters.category.append(`<option value="${escHtml(c.id)}">${escHtml(c.name)}</option>`);
                 });
+                console.log('📦 _catSlugMap:', _catSlugMap);
             },
         });
     }
