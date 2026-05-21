@@ -1,75 +1,87 @@
-import { IDatabase } from 'pg-promise';
+import { v4 as uuidv4 } from 'uuid';
 import { BaseRepository } from './BaseRepository';
+import { DbPool } from '../database/connection';
 import { CategoryFeature } from '../types';
 
 export class CategoryFeatureRepository extends BaseRepository {
-  constructor(db: IDatabase<any>) {
+  constructor(db: DbPool) {
     super(db, 'category_features');
   }
 
   async findByCategoryId(categoryId: string): Promise<CategoryFeature[]> {
-    return this.db.any(
-      'SELECT * FROM category_features WHERE category_id = $1 ORDER BY type, "order"',
+    const [rows] = await this.db.execute(
+      'SELECT * FROM category_features WHERE category_id = ? ORDER BY type, `order`',
       [categoryId]
     );
+    return rows as CategoryFeature[];
   }
 
   async findByType(categoryId: string, type: string): Promise<CategoryFeature[]> {
-    return this.db.any(
-      'SELECT * FROM category_features WHERE category_id = $1 AND type = $2 ORDER BY "order"',
+    const [rows] = await this.db.execute(
+      'SELECT * FROM category_features WHERE category_id = ? AND type = ? ORDER BY `order`',
       [categoryId, type]
     );
+    return rows as CategoryFeature[];
   }
 
   async create(data: Omit<CategoryFeature, 'id' | 'created_at' | 'updated_at'>): Promise<CategoryFeature> {
-    return this.db.one(
-      `INSERT INTO category_features (category_id, type, label, "order")
-       VALUES ($1, $2, $3, $4)
-       RETURNING *`,
-      [data.category_id, data.type, data.label, data.order || 0]
+    const id = uuidv4();
+    await this.db.execute(
+      'INSERT INTO category_features (id, category_id, type, label, `order`) VALUES (?, ?, ?, ?, ?)',
+      [id, data.category_id, data.type, data.label, data.order ?? 0]
     );
+    return this.findById(id);
   }
 
   async update(id: string, data: Partial<CategoryFeature>): Promise<CategoryFeature> {
-    const fields = [];
-    const values = [];
-    let paramIndex = 1;
-
     const allowed = ['label', 'type', 'order'];
+    const setClauses: string[] = [];
+    const values: any[] = [];
+
     Object.entries(data).forEach(([key, value]) => {
       if (allowed.includes(key) && value !== undefined) {
-        fields.push(`${key} = $${paramIndex}`);
+        setClauses.push(`\`${key}\` = ?`);
         values.push(value);
-        paramIndex++;
       }
     });
 
-    if (fields.length === 0) {
-      return this.db.one('SELECT * FROM category_features WHERE id = $1', [id]);
+    if (setClauses.length > 0) {
+      setClauses.push('updated_at = NOW()');
+      values.push(id);
+      await this.db.execute(
+        `UPDATE category_features SET ${setClauses.join(', ')} WHERE id = ?`,
+        values
+      );
     }
 
-    fields.push(`updated_at = $${paramIndex}`);
-    values.push(new Date());
-    values.push(id);
-
-    return this.db.one(
-      `UPDATE category_features SET ${fields.join(', ')} WHERE id = $${paramIndex + 1} RETURNING *`,
-      values
-    );
+    return this.findById(id);
   }
 
+  // Uses a real transaction via pool connection instead of pg-promise's db.tx()
   async reorder(categoryId: string, featureIds: string[]): Promise<void> {
-    const queries = featureIds.map((id, index) =>
-      this.db.none('UPDATE category_features SET "order" = $1 WHERE id = $2', [index + 1, id])
-    );
-    await this.db.tx((t) => t.batch(queries));
+    const conn = await this.db.getConnection();
+    try {
+      await conn.beginTransaction();
+      for (const [index, id] of featureIds.entries()) {
+        await conn.execute(
+          'UPDATE category_features SET `order` = ? WHERE id = ?',
+          [index + 1, id]
+        );
+      }
+      await conn.commit();
+    } catch (err) {
+      await conn.rollback();
+      throw err;
+    } finally {
+      conn.release();
+    }
   }
 
   async deleteByCategoryId(categoryId: string): Promise<boolean> {
-    const result = await this.db.result(
-      'DELETE FROM category_features WHERE category_id = $1',
+    const [result] = await this.db.execute(
+      'DELETE FROM category_features WHERE category_id = ?',
       [categoryId]
-    );
-    return result.rowCount > 0;
+    ) as any[];
+    return result.affectedRows > 0;
   }
 }

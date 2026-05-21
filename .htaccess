@@ -1,0 +1,82 @@
+# =============================================================================
+# .htaccess — Kaise Product Catalog — Production (Apache + Phusion Passenger)
+# Place this file at the subdomain document root.
+#
+# OPTION A — cPanel "Setup Node.js App" / Phusion Passenger (RECOMMENDED)
+#   cPanel auto-configures Passenger; these directives only reinforce security.
+#
+# OPTION B — Apache mod_proxy (VPS with SSH)
+#   Uncomment the ProxyPass block below and comment out the Passenger block.
+# =============================================================================
+
+# ---------- Security: block access to sensitive files ----------
+<FilesMatch "^\.env">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+<FilesMatch "\.(ts|sql|log|lock|json|md|gitignore)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+<FilesMatch "^(package(-lock)?\.json|tsconfig\.json|docker-compose\.yml)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Block direct access to source directories
+    RewriteRule ^src/         - [F,L]
+    RewriteRule ^node_modules/ - [F,L]
+
+    # -----------------------------------------------------------------------
+    # OPTION A — Passenger (active when cPanel Node.js App is set up)
+    # The PassengerNodejs path is set by cPanel; nothing extra needed here.
+    # -----------------------------------------------------------------------
+    # Passenger handles all routing; no rewrites needed for the API.
+    # Static files in /uploads and /admin/dist are served directly by Apache.
+
+    # Serve /uploads as static files (no proxy needed)
+    RewriteCond %{REQUEST_URI} ^/uploads/
+    RewriteRule ^ - [L]
+
+    # Serve /admin SPA static assets
+    RewriteCond %{REQUEST_URI} ^/admin/
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^admin/.*$ admin/dist/index.html [L]
+
+    # -----------------------------------------------------------------------
+    # OPTION B — mod_proxy to running Node.js process (uncomment if on VPS)
+    # Requires: sudo a2enmod proxy proxy_http && systemctl restart apache2
+    # -----------------------------------------------------------------------
+    # RewriteCond %{REQUEST_URI} !^/uploads/
+    # RewriteRule ^(.*)$ http://127.0.0.1:3000/$1 [P,L]
+</IfModule>
+
+# ---------- Performance headers ----------
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType image/jpeg  "access plus 1 month"
+    ExpiresByType image/png   "access plus 1 month"
+    ExpiresByType image/webp  "access plus 1 month"
+    ExpiresByType image/svg+xml "access plus 1 month"
+    ExpiresByType application/pdf "access plus 1 month"
+    ExpiresByType text/css    "access plus 1 week"
+    ExpiresByType application/javascript "access plus 1 week"
+</IfModule>
+
+# ---------- Compression ----------
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/css
+    AddOutputFilterByType DEFLATE application/javascript application/json
+</IfModule>
+
+# ---------- Security headers ----------
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>

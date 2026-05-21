@@ -1,24 +1,33 @@
-import { IDatabase } from 'pg-promise';
+import { ResultSetHeader } from 'mysql2';
+import { DbPool } from '../database/connection';
 
 export class BaseRepository {
-  protected db: IDatabase<any>;
+  protected db: DbPool;
   protected table: string;
 
-  constructor(db: IDatabase<any>, table: string) {
+  constructor(db: DbPool, table: string) {
     this.db = db;
     this.table = table;
   }
 
   async findById(id: string): Promise<any> {
-    return this.db.oneOrNone(`SELECT * FROM ${this.table} WHERE id = $1`, [id]);
+    const [rows] = await this.db.execute(
+      `SELECT * FROM \`${this.table}\` WHERE id = ?`,
+      [id]
+    );
+    return (rows as any[])[0] ?? null;
   }
 
   async findAll(): Promise<any[]> {
-    return this.db.any(`SELECT * FROM ${this.table}`);
+    const [rows] = await this.db.execute(`SELECT * FROM \`${this.table}\``);
+    return rows as any[];
   }
 
   async delete(id: string): Promise<boolean> {
-    const result = await this.db.result(`DELETE FROM ${this.table} WHERE id = $1`, [id]);
-    return result.rowCount > 0;
+    const [result] = await this.db.execute(
+      `DELETE FROM \`${this.table}\` WHERE id = ?`,
+      [id]
+    );
+    return (result as ResultSetHeader).affectedRows > 0;
   }
 }

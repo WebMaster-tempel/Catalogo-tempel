@@ -1,199 +1,185 @@
-import { IDatabase } from 'pg-promise';
+import { v4 as uuidv4 } from 'uuid';
 import { BaseRepository } from './BaseRepository';
+import { DbPool } from '../database/connection';
 import { Product, QueryOptions, PaginationMeta } from '../types';
 
 export class ProductRepository extends BaseRepository {
-  constructor(db: IDatabase<any>) {
+  constructor(db: DbPool) {
     super(db, 'products');
   }
 
   async findBySlug(slug: string): Promise<Product | null> {
-    return this.db.oneOrNone('SELECT * FROM products WHERE slug = $1', [slug]);
+    const [rows] = await this.db.execute(
+      'SELECT * FROM products WHERE slug = ?',
+      [slug]
+    );
+    return (rows as any[])[0] ?? null;
   }
 
   async create(data: Omit<Product, 'id' | 'created_at' | 'updated_at'>): Promise<Product> {
-    const result = await this.db.one(
-      `INSERT INTO products (name, slug, description, product_type_id, status, main_image_id)
-       VALUES ($1, $2, $3, $4, $5, $6)
-       RETURNING *`,
-      [data.name, data.slug, data.description, data.product_type_id, data.status, data.main_image_id]
+    const id = uuidv4();
+    await this.db.execute(
+      `INSERT INTO products (id, name, slug, description, product_type_id, status, main_image_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [id, data.name, data.slug, data.description ?? null,
+       data.product_type_id, data.status, data.main_image_id ?? null]
     );
-    return result;
+    return this.findById(id);
   }
 
   async update(id: string, data: Partial<Product>): Promise<Product> {
-    const fields = [];
-    const values = [];
-    let paramIndex = 1;
+    const setClauses: string[] = [];
+    const values: any[] = [];
 
     Object.entries(data).forEach(([key, value]) => {
       if (value !== undefined && key !== 'id' && key !== 'created_at') {
-        fields.push(`${key} = $${paramIndex}`);
+        setClauses.push(`\`${key}\` = ?`);
         values.push(value);
-        paramIndex++;
       }
     });
 
-    if (fields.length === 0) {
-      return this.db.one('SELECT * FROM products WHERE id = $1', [id]);
+    if (setClauses.length > 0) {
+      setClauses.push('updated_at = NOW()');
+      values.push(id);
+      await this.db.execute(
+        `UPDATE products SET ${setClauses.join(', ')} WHERE id = ?`,
+        values
+      );
     }
 
-    fields.push(`updated_at = $${paramIndex}`);
-    values.push(new Date());
-    values.push(id);
-
-    return this.db.one(
-      `UPDATE products SET ${fields.join(', ')} WHERE id = $${paramIndex + 1} RETURNING *`,
-      values
-    );
+    return this.findById(id);
   }
 
   async list(options: QueryOptions): Promise<{ data: Product[]; meta: PaginationMeta }> {
-    const page = options.page || 1;
+    const page    = options.page     || 1;
     const perPage = options.per_page || 20;
-    const offset = (page - 1) * perPage;
+    const offset  = (page - 1) * perPage;
 
-    let where = [];
-    let params: any[] = [];
-    let paramIndex = 1;
+    const where: string[] = [];
+    const params: any[]   = [];
 
     if (options.search) {
-      where.push(`(name ILIKE $${paramIndex} OR description ILIKE $${paramIndex})`);
-      params.push(`%${options.search}%`);
-      paramIndex++;
+      where.push('(name LIKE ? OR description LIKE ?)');
+      params.push(`%${options.search}%`, `%${options.search}%`);
     }
-
     if (options.product_type_id) {
-      where.push(`product_type_id = $${paramIndex}`);
+      where.push('product_type_id = ?');
       params.push(options.product_type_id);
-      paramIndex++;
     }
-
     if (options.status) {
-      where.push(`status = $${paramIndex}`);
+      where.push('status = ?');
       params.push(options.status);
-      paramIndex++;
     }
-
     if (options.category_id) {
-      where.push(`id IN (SELECT product_id FROM product_categories WHERE category_id = $${paramIndex})`);
+      where.push('id IN (SELECT product_id FROM product_categories WHERE category_id = ?)');
       params.push(options.category_id);
-      paramIndex++;
     }
 
     const whereClause = where.length > 0 ? `WHERE ${where.join(' AND ')}` : '';
 
-    const countResult = await this.db.one(
-      `SELECT COUNT(*) as total FROM products ${whereClause}`,
+    const [countRows] = await this.db.execute(
+      `SELECT COUNT(*) AS total FROM products ${whereClause}`,
       params
     );
-    const total = parseInt(countResult.total, 10);
+    const total = parseInt((countRows as any[])[0].total, 10);
 
-    const data = await this.db.any(
-      `SELECT * FROM products ${whereClause} ORDER BY created_at DESC LIMIT $${paramIndex} OFFSET $${
-        paramIndex + 1
-      }`,
+    const [data] = await this.db.execute(
+      `SELECT * FROM products ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
       [...params, perPage, offset]
     );
 
     return {
-      data,
-      meta: {
-        page,
-        per_page: perPage,
-        total,
-        total_pages: Math.ceil(total / perPage),
-      },
+      data: data as Product[],
+      meta: { page, per_page: perPage, total, total_pages: Math.ceil(total / perPage) },
     };
   }
 
   async listWithDynamicFilters(options: QueryOptions): Promise<{ data: any[]; meta: PaginationMeta }> {
-    const page = options.page || 1;
+    const page    = options.page     || 1;
     const perPage = options.per_page || 20;
-    const offset = (page - 1) * perPage;
+    const offset  = (page - 1) * perPage;
 
-    let where = [];
-    let params: any[] = [];
-    let paramIndex = 1;
+    const where: string[] = [];
+    const params: any[]   = [];
 
     if (options.search) {
-      where.push(`p.name ILIKE $${paramIndex} OR p.description ILIKE $${paramIndex}`);
-      params.push(`%${options.search}%`);
-      paramIndex++;
+      where.push('(p.name LIKE ? OR p.description LIKE ?)');
+      params.push(`%${options.search}%`, `%${options.search}%`);
     }
-
     if (options.product_type_id) {
-      where.push(`p.product_type_id = $${paramIndex}`);
+      where.push('p.product_type_id = ?');
       params.push(options.product_type_id);
-      paramIndex++;
     }
-
     if (options.status) {
-      where.push(`p.status = $${paramIndex}`);
+      where.push('p.status = ?');
       params.push(options.status);
-      paramIndex++;
     }
-
     if (options.category_id) {
-      where.push(
-        `p.id IN (SELECT product_id FROM product_categories WHERE category_id = $${paramIndex})`
-      );
+      where.push('p.id IN (SELECT product_id FROM product_categories WHERE category_id = ?)');
       params.push(options.category_id);
-      paramIndex++;
     }
 
-    // Dynamic attribute filters
+    // Dynamic JSON attribute filters — MySQL 8.0 arrow operator
     if (options.filters) {
       Object.entries(options.filters).forEach(([key, value]) => {
-        where.push(`pav.attributes_json->>'${key.replace(/'/g, "''")}' = $${paramIndex}`);
-        params.push(String(value));
-        paramIndex++;
+        where.push(`JSON_UNQUOTE(JSON_EXTRACT(pav.attributes_json, ?)) = ?`);
+        params.push(`$.${key}`, String(value));
       });
     }
 
     const whereClause = where.length > 0 ? `WHERE ${where.join(' AND ')}` : '';
 
-    const countResult = await this.db.one(
-      `SELECT COUNT(*) as total FROM products p LEFT JOIN product_attribute_values pav ON p.id = pav.product_id ${whereClause}`,
+    const [countRows] = await this.db.execute(
+      `SELECT COUNT(*) AS total
+       FROM products p
+       LEFT JOIN product_attribute_values pav ON p.id = pav.product_id
+       ${whereClause}`,
       params
     );
-    const total = parseInt(countResult.total, 10);
+    const total = parseInt((countRows as any[])[0].total, 10);
 
-    const data = await this.db.any(
-      `SELECT p.*, pav.attributes_json FROM products p
+    const [data] = await this.db.execute(
+      `SELECT p.*, pav.attributes_json
+       FROM products p
        LEFT JOIN product_attribute_values pav ON p.id = pav.product_id
        ${whereClause}
        ORDER BY p.created_at DESC
-       LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`,
+       LIMIT ? OFFSET ?`,
       [...params, perPage, offset]
     );
 
     return {
-      data,
-      meta: {
-        page,
-        per_page: perPage,
-        total,
-        total_pages: Math.ceil(total / perPage),
-      },
+      data: data as any[],
+      meta: { page, per_page: perPage, total, total_pages: Math.ceil(total / perPage) },
     };
   }
 
+  // Uses correlated subqueries to avoid cross-join duplication (no JSONB_AGG DISTINCT in MySQL)
   async findFullProduct(id: string): Promise<any> {
-    return this.db.oneOrNone(
+    const [rows] = await this.db.execute(
       `SELECT
          p.*,
          pav.attributes_json,
-         jsonb_agg(DISTINCT jsonb_build_object('id', c.id, 'name', c.name, 'slug', c.slug)) FILTER (WHERE c.id IS NOT NULL) as categories,
-         jsonb_agg(DISTINCT jsonb_build_object('id', m.id, 'type', m.type, 'url', m.url, 'title', m.title, 'order', m."order")) FILTER (WHERE m.id IS NOT NULL) as media
+         (SELECT JSON_ARRAYAGG(
+            JSON_OBJECT('id', c.id, 'name', c.name, 'slug', c.slug)
+          )
+          FROM product_categories pc
+          JOIN categories c ON pc.category_id = c.id
+          WHERE pc.product_id = p.id
+         ) AS categories,
+         (SELECT JSON_ARRAYAGG(
+            JSON_OBJECT('id', m.id, 'type', m.type, 'url', m.url,
+                        'title', m.title, 'order', m.\`order\`)
+            ORDER BY m.\`order\`
+          )
+          FROM media m
+          WHERE m.product_id = p.id
+         ) AS media
        FROM products p
        LEFT JOIN product_attribute_values pav ON p.id = pav.product_id
-       LEFT JOIN product_categories pc ON p.id = pc.product_id
-       LEFT JOIN categories c ON pc.category_id = c.id
-       LEFT JOIN media m ON p.id = m.product_id
-       WHERE p.id = $1
-       GROUP BY p.id, pav.id`,
+       WHERE p.id = ?`,
       [id]
     );
+    return (rows as any[])[0] ?? null;
   }
 }
