@@ -1,11 +1,12 @@
+import { DbPool } from '../database/connection';
 import { ProductTypeRepository } from '../repositories/ProductTypeRepository';
 import { ProductType } from '../types';
-import { IDatabase } from 'pg-promise';
+
 
 export class ProductTypeService {
   private productTypeRepo: ProductTypeRepository;
 
-  constructor(db: IDatabase<any>) {
+  constructor(db: DbPool) {
     this.productTypeRepo = new ProductTypeRepository(db);
   }
 

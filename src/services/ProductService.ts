@@ -3,8 +3,8 @@ import { ProductAttributeValuesRepository } from '../repositories/ProductAttribu
 import { ProductTypeRepository } from '../repositories/ProductTypeRepository';
 import { MediaRepository } from '../repositories/MediaRepository';
 import { CategoryRepository } from '../repositories/CategoryRepository';
+import { DbPool } from '../database/connection';
 import { Product, QueryOptions, Attribute } from '../types';
-import { IDatabase } from 'pg-promise';
 
 export class ProductService {
   private productRepo: ProductRepository;
@@ -12,15 +12,15 @@ export class ProductService {
   private productTypeRepo: ProductTypeRepository;
   private mediaRepo: MediaRepository;
   private categoryRepo: CategoryRepository;
-  private db: IDatabase<any>;
+  private db: DbPool;
 
-  constructor(db: IDatabase<any>) {
+  constructor(db: DbPool) {
     this.db = db;
-    this.productRepo = new ProductRepository(db);
+    this.productRepo      = new ProductRepository(db);
     this.attributeValuesRepo = new ProductAttributeValuesRepository(db);
-    this.productTypeRepo = new ProductTypeRepository(db);
-    this.mediaRepo = new MediaRepository(db);
-    this.categoryRepo = new CategoryRepository(db);
+    this.productTypeRepo  = new ProductTypeRepository(db);
+    this.mediaRepo        = new MediaRepository(db);
+    this.categoryRepo     = new CategoryRepository(db);
   }
 
   async createProduct(
@@ -29,27 +29,26 @@ export class ProductService {
       category_ids?: string[];
     }
   ): Promise<any> {
-    return this.db.tx(async () => {
+    const conn = await this.db.getConnection();
+    try {
+      await conn.beginTransaction();
       const { attributes, category_ids, ...productData } = data;
-
-      // Validate attributes match product type
       await this.validateProductAttributes(data.product_type_id, attributes);
-
-      // Create product
       const product = await this.productRepo.create(productData);
-
-      // Create attribute values
       await this.attributeValuesRepo.create(product.id, attributes);
-
-      // Assign categories
       if (category_ids && category_ids.length > 0) {
         for (const categoryId of category_ids) {
           await this.categoryRepo.assignProduct(product.id, categoryId);
         }
       }
-
+      await conn.commit();
       return this.productRepo.findFullProduct(product.id);
-    });
+    } catch (err) {
+      await conn.rollback();
+      throw err;
+    } finally {
+      conn.release();
+    }
   }
 
   async updateProduct(
@@ -59,10 +58,11 @@ export class ProductService {
       category_ids?: string[];
     }
   ): Promise<any> {
-    return this.db.tx(async () => {
+    const conn = await this.db.getConnection();
+    try {
+      await conn.beginTransaction();
       const { attributes, category_ids, ...productData } = data;
 
-      // Validate attributes if provided
       if (attributes) {
         const product = await this.productRepo.findById(id);
         if (product) {
@@ -70,30 +70,30 @@ export class ProductService {
         }
       }
 
-      // Update product
       await this.productRepo.update(id, productData);
 
-      // Update attribute values if provided
       if (attributes) {
         await this.attributeValuesRepo.upsert(id, attributes);
       }
 
-      // Update categories if provided
       if (category_ids !== undefined) {
-        // Remove all existing categories
         const existingCategories = await this.categoryRepo.getProductCategories(id);
         for (const category of existingCategories) {
           await this.categoryRepo.removeProduct(id, category.id);
         }
-
-        // Add new categories
         for (const categoryId of category_ids) {
           await this.categoryRepo.assignProduct(id, categoryId);
         }
       }
 
+      await conn.commit();
       return this.productRepo.findFullProduct(id);
-    });
+    } catch (err) {
+      await conn.rollback();
+      throw err;
+    } finally {
+      conn.release();
+    }
   }
 
   async getProduct(id: string): Promise<any> {
@@ -116,57 +116,40 @@ export class ProductService {
     attributes: Record<string, any>
   ): Promise<void> {
     const productType = await this.productTypeRepo.getWithAttributes(productTypeId);
-
-    if (!productType || !productType.attributes || productType.attributes.length === 0) {
-      return; // No validation needed
-    }
+    if (!productType || !productType.attributes || productType.attributes.length === 0) return;
 
     const attributeMap = new Map<string, Attribute & { is_required: boolean }>();
     for (const attr of productType.attributes) {
       attributeMap.set(attr.name, attr);
     }
 
-    // Check required attributes
     for (const [name, attr] of attributeMap.entries()) {
       if (attr.is_required && !(name in attributes)) {
         throw new Error(`Required attribute missing: ${attr.label}`);
       }
     }
 
-    // Validate data types
     for (const [name, value] of Object.entries(attributes)) {
       const attr = attributeMap.get(name);
-      if (attr) {
-        this.validateAttributeValue(attr, value);
-      }
+      if (attr) this.validateAttributeValue(attr, value);
     }
   }
 
   private validateAttributeValue(attr: Attribute & { is_required?: boolean }, value: any): void {
-    if (value === null || value === undefined) {
-      return;
-    }
-
+    if (value === null || value === undefined) return;
     switch (attr.data_type) {
       case 'number':
-        if (typeof value !== 'number') {
-          throw new Error(`${attr.label} must be a number`);
-        }
+        if (typeof value !== 'number') throw new Error(`${attr.label} must be a number`);
         break;
       case 'boolean':
-        if (typeof value !== 'boolean') {
-          throw new Error(`${attr.label} must be a boolean`);
-        }
+        if (typeof value !== 'boolean') throw new Error(`${attr.label} must be a boolean`);
         break;
       case 'date':
-        if (!(value instanceof Date) && typeof value !== 'string') {
+        if (!(value instanceof Date) && typeof value !== 'string')
           throw new Error(`${attr.label} must be a date`);
-        }
         break;
       case 'string':
-        if (typeof value !== 'string') {
-          throw new Error(`${attr.label} must be a string`);
-        }
+        if (typeof value !== 'string') throw new Error(`${attr.label} must be a string`);
         break;
     }
   }

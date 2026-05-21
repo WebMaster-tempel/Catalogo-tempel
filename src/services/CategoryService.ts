@@ -1,11 +1,12 @@
+import { DbPool } from '../database/connection';
 import { CategoryRepository } from '../repositories/CategoryRepository';
 import { Category } from '../types';
-import { IDatabase } from 'pg-promise';
+
 
 export class CategoryService {
   private categoryRepo: CategoryRepository;
 
-  constructor(db: IDatabase<any>) {
+  constructor(db: DbPool) {
     this.categoryRepo = new CategoryRepository(db);
   }
 

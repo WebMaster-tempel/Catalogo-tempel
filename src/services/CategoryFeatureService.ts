@@ -1,11 +1,12 @@
-import { IDatabase } from 'pg-promise';
+import { DbPool } from '../database/connection';
+
 import { CategoryFeatureRepository } from '../repositories/CategoryFeatureRepository';
 import { CategoryFeature } from '../types';
 
 export class CategoryFeatureService {
   private repo: CategoryFeatureRepository;
 
-  constructor(db: IDatabase<any>) {
+  constructor(db: DbPool) {
     this.repo = new CategoryFeatureRepository(db);
   }
 
@@ -17,7 +18,7 @@ export class CategoryFeatureService {
     return this.repo.findByType(categoryId, type);
   }
 
-  async createFeature(categoryId: string, type: string, label: string, order?: number): Promise<CategoryFeature> {
+  async createFeature(categoryId: string, type: 'application' | 'characteristic', label: string, order?: number): Promise<CategoryFeature> {
     const features = await this.repo.findByCategoryId(categoryId);
     const maxOrder = features.filter((f) => f.type === type).length;
 
