@@ -18,17 +18,19 @@ BEGIN;
 -- -----------------------------------------------------------------------------
 
 CREATE TABLE tags (
-    id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id         CHAR(36) PRIMARY KEY,
     name       VARCHAR(100) NOT NULL UNIQUE,
     label      VARCHAR(100) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE category_tags (
-    category_id UUID NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
-    tag_id      UUID NOT NULL REFERENCES tags(id)       ON DELETE CASCADE,
-    PRIMARY KEY (category_id, tag_id)
-);
+    category_id CHAR(36) NOT NULL,
+    tag_id      CHAR(36) NOT NULL,
+    PRIMARY KEY (category_id, tag_id),
+    CONSTRAINT fk_ct_category FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE,
+    CONSTRAINT fk_ct_tag FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE INDEX idx_category_tags_tag_id ON category_tags(tag_id);
 
@@ -144,7 +146,7 @@ VALUES (
 -- 7. KAISE OPzV: CATEGORY FEATURES
 -- -----------------------------------------------------------------------------
 
-INSERT INTO category_features (id, category_id, type, label, "order") VALUES
+INSERT INTO category_features (id, category_id, type, label, `order`) VALUES
     -- Applications (8)
     ('a15c1e00-700b-4000-8000-000000000001', 'a15c1e00-1000-4000-8000-00000000000b', 'application', 'Sistemas de telecomunicaciones', 1),
     ('a15c1e00-700b-4000-8000-000000000002', 'a15c1e00-1000-4000-8000-00000000000b', 'application', 'Estaciones de retransmisión de señales telefónicas y de radio', 2),

@@ -2,7 +2,7 @@
 BEGIN;
 
 -- KAISE LITIO Applications (12)
-INSERT INTO category_features (id, category_id, type, label, "order") VALUES
+INSERT INTO category_features (id, category_id, type, label, `order`) VALUES
   ('a11c1e00-6001-4000-8000-000000000001', 'a11c1e00-1000-4000-8000-000000000001', 'application', 'Energía de reserva para pequeños SAI', 1),
   ('a11c1e00-6001-4000-8000-000000000002', 'a11c1e00-1000-4000-8000-000000000001', 'application', 'Iluminación de paneles outdoor', 2),
   ('a11c1e00-6001-4000-8000-000000000003', 'a11c1e00-1000-4000-8000-000000000001', 'application', 'Enlace eléctrico de FTTB y LAN / WIFI', 3),

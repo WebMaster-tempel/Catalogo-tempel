@@ -15,7 +15,8 @@ export default function Categories() {
   const [featureLabel, setFeatureLabel] = useState('');
   const [saving, setSaving] = useState(false);
   const [showNewCatForm, setShowNewCatForm] = useState(false);
-  const [activeTab, setActiveTab] = useState<'application' | 'characteristic'>('application');
+  const [activeTab, setActiveTab] = useState<'application' | 'characteristic' | 'video'>('application');
+  const [videoForm, setVideoForm] = useState({ title: '', url: '' });
 
   const load = useCallback(async () => {
     try {
@@ -51,6 +52,21 @@ export default function Categories() {
     loadFeatures(cat.id);
     setActiveTab('application');
     setFeatureLabel('');
+    setVideoForm({ title: '', url: '' });
+  }
+
+  function extractYouTubeId(url: string): string | null {
+    let m = url.match(/youtu\.be\/([A-Za-z0-9_-]{11})/);
+    if (m) return m[1];
+    m = url.match(/youtube\.com\/shorts\/([A-Za-z0-9_-]{11})/);
+    if (m) return m[1];
+    m = url.match(/[?&]v=([A-Za-z0-9_-]{11})/);
+    if (m) return m[1];
+    return null;
+  }
+
+  function parseVideoLabel(label: string): { title: string; url: string } {
+    try { return JSON.parse(label); } catch { return { title: '', url: label }; }
   }
 
   async function handleCreateCategory(e: React.FormEvent) {
@@ -100,6 +116,22 @@ export default function Categories() {
     }
   }
 
+  async function handleCreateVideo(e: React.FormEvent) {
+    e.preventDefault();
+    if (!selected || !videoForm.url.trim()) return;
+    setSaving(true);
+    try {
+      const label = JSON.stringify({ title: videoForm.title.trim(), url: videoForm.url.trim() });
+      await categoriesApi.createFeature(selected.id, { type: 'video', label });
+      setVideoForm({ title: '', url: '' });
+      await loadFeatures(selected.id);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Error añadiendo video');
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function handleDeleteFeature() {
     if (!deleteFeatureId || !selected) return;
     try {
@@ -114,7 +146,8 @@ export default function Categories() {
   const applications    = features.filter(f => f.type === 'application').sort((a, b) => a.order - b.order);
   const characteristics = features.filter(f => f.type === 'characteristic').sort((a, b) => a.order - b.order);
   const compatibility   = features.filter(f => f.type === 'compatibility').sort((a, b) => a.order - b.order);
-  const activeFeatures  = activeTab === 'application' ? applications : characteristics;
+  const videos          = features.filter(f => f.type === 'video').sort((a, b) => a.order - b.order);
+  const activeFeatures  = activeTab === 'application' ? applications : activeTab === 'characteristic' ? characteristics : [];
 
   function getBreadcrumb(category: Category): Category[] {
     const path: Category[] = [category];
@@ -296,57 +329,130 @@ export default function Categories() {
             <div className="detail-section detail-section--features">
               {/* Tabs */}
               <div className="detail-tabs">
-                {(['application', 'characteristic'] as const).map(tab => (
-                  <button
-                    key={tab}
-                    className={`detail-tab${activeTab === tab ? ' detail-tab--active' : ''}`}
-                    onClick={() => { setActiveTab(tab); setFeatureLabel(''); }}
-                  >
-                    {tab === 'application'
-                      ? `Aplicaciones (${applications.length})`
-                      : `Características (${characteristics.length})`}
-                  </button>
-                ))}
-              </div>
-
-              {/* List */}
-              <div className="detail-features">
-                {activeFeatures.length === 0 ? (
-                  <p className="tree-empty">
-                    No hay {activeTab === 'application' ? 'aplicaciones' : 'características'} todavía.
-                  </p>
-                ) : (
-                  <ul className="feature-list">
-                    {activeFeatures.map((f, i) => (
-                      <li key={f.id} className="feature-item">
-                        <span className="feature-num">{i + 1}</span>
-                        <span className="feature-label">{f.label}</span>
-                        <button
-                          className="feature-delete"
-                          onClick={() => setDeleteFeatureId(f.id)}
-                          title="Eliminar"
-                        >
-                          ✕
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-
-              {/* Add form */}
-              <form className="feature-add-form" onSubmit={handleCreateFeature}>
-                <input
-                  type="text"
-                  placeholder={`+ Añadir ${activeTab === 'application' ? 'aplicación' : 'característica'}...`}
-                  value={featureLabel}
-                  onChange={e => setFeatureLabel(e.target.value)}
-                  required
-                />
-                <button type="submit" className="btn btn-primary btn-sm" disabled={saving}>
-                  {saving ? '...' : 'Añadir'}
+                <button
+                  className={`detail-tab${activeTab === 'application' ? ' detail-tab--active' : ''}`}
+                  onClick={() => { setActiveTab('application'); setFeatureLabel(''); }}
+                >
+                  Aplicaciones ({applications.length})
                 </button>
-              </form>
+                <button
+                  className={`detail-tab${activeTab === 'characteristic' ? ' detail-tab--active' : ''}`}
+                  onClick={() => { setActiveTab('characteristic'); setFeatureLabel(''); }}
+                >
+                  Características ({characteristics.length})
+                </button>
+                <button
+                  className={`detail-tab${activeTab === 'video' ? ' detail-tab--active' : ''}`}
+                  onClick={() => { setActiveTab('video'); setFeatureLabel(''); }}
+                >
+                  🎬 Videos ({videos.length})
+                </button>
+              </div>
+
+              {/* Text feature list (application / characteristic) */}
+              {activeTab !== 'video' && (
+                <>
+                  <div className="detail-features">
+                    {activeFeatures.length === 0 ? (
+                      <p className="tree-empty">
+                        No hay {activeTab === 'application' ? 'aplicaciones' : 'características'} todavía.
+                      </p>
+                    ) : (
+                      <ul className="feature-list">
+                        {activeFeatures.map((f, i) => (
+                          <li key={f.id} className="feature-item">
+                            <span className="feature-num">{i + 1}</span>
+                            <span className="feature-label">{f.label}</span>
+                            <button
+                              className="feature-delete"
+                              onClick={() => setDeleteFeatureId(f.id)}
+                              title="Eliminar"
+                            >✕</button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                  <form className="feature-add-form" onSubmit={handleCreateFeature}>
+                    <input
+                      type="text"
+                      placeholder={`+ Añadir ${activeTab === 'application' ? 'aplicación' : 'característica'}...`}
+                      value={featureLabel}
+                      onChange={e => setFeatureLabel(e.target.value)}
+                      required
+                    />
+                    <button type="submit" className="btn btn-primary btn-sm" disabled={saving}>
+                      {saving ? '...' : 'Añadir'}
+                    </button>
+                  </form>
+                </>
+              )}
+
+              {/* Video tab */}
+              {activeTab === 'video' && (
+                <>
+                  {videos.length === 0 ? (
+                    <p className="tree-empty">No hay videos todavía.</p>
+                  ) : (
+                    <div className="video-admin-grid">
+                      {videos.map(f => {
+                        const { title, url } = parseVideoLabel(f.label);
+                        const vid = extractYouTubeId(url);
+                        const thumb = vid
+                          ? `https://img.youtube.com/vi/${vid}/mqdefault.jpg`
+                          : null;
+                        const isShort = url.includes('/shorts/');
+                        return (
+                          <div key={f.id} className="video-admin-card">
+                            <div className="video-admin-thumb">
+                              {thumb
+                                ? <img src={thumb} alt={title} />
+                                : <div className="video-admin-no-thumb">▶</div>
+                              }
+                              {isShort && <span className="video-admin-badge">Short</span>}
+                            </div>
+                            <div className="video-admin-info">
+                              <div className="video-admin-title">{title || '(sin título)'}</div>
+                              <a
+                                href={url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="video-admin-url"
+                              >{url}</a>
+                            </div>
+                            <button
+                              className="feature-delete"
+                              onClick={() => setDeleteFeatureId(f.id)}
+                              title="Eliminar"
+                            >✕</button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  <form className="video-add-form" onSubmit={handleCreateVideo}>
+                    <div className="video-add-fields">
+                      <input
+                        type="text"
+                        placeholder="Título (ej. Kaise Solar GEL)"
+                        value={videoForm.title}
+                        onChange={e => setVideoForm(v => ({ ...v, title: e.target.value }))}
+                      />
+                      <input
+                        type="url"
+                        placeholder="URL de YouTube (youtu.be/... o youtube.com/shorts/...)"
+                        value={videoForm.url}
+                        onChange={e => setVideoForm(v => ({ ...v, url: e.target.value }))}
+                        required
+                      />
+                    </div>
+                    <button type="submit" className="btn btn-primary btn-sm" disabled={saving}>
+                      {saving ? '...' : '+ Añadir video'}
+                    </button>
+                  </form>
+                </>
+              )}
             </div>
 
           </div>

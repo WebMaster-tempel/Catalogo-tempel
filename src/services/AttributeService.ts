@@ -1,11 +1,11 @@
 import { AttributeRepository } from '../repositories/AttributeRepository';
 import { Attribute } from '../types';
-import { IDatabase } from 'pg-promise';
+import { DbPool } from '../database/connection';
 
 export class AttributeService {
   private attributeRepo: AttributeRepository;
 
-  constructor(db: IDatabase<any>) {
+  constructor(db: DbPool) {
     this.attributeRepo = new AttributeRepository(db);
   }
 

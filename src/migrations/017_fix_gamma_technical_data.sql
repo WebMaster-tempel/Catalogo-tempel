@@ -8,7 +8,7 @@
 -- Correcciones:
 --   1. eurobat = TRUE para todas las gammas VRLA/AGM/GEL
 --   2. plate_type 'Tubular' → 'Flat' donde el catálogo indica Flat
---        (Solar AGM tenía 'AGM'; Deep Cycle, Solar Gel, Deep Cycle Gel tenían 'Tubular')
+--        (Solar AGM tenía 'AGM'. Deep Cycle, Solar Gel, Deep Cycle Gel tenían 'Tubular')
 --   3. technology 'VRLA' → 'VRLA-AGM' para Wind Power
 --   4. design_life_years nulos rellenados con valores del catálogo
 --   5. cycles nulos rellenados con valores del catálogo

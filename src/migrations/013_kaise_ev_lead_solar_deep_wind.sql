@@ -96,7 +96,7 @@ INSERT INTO categories (id, name, slug, description, parent_id,
 -- =====================================================================
 -- CATEGORY FEATURES: KAISE ELECTRIC VEHICLE
 -- =====================================================================
-INSERT INTO category_features (id, category_id, type, label, "order") VALUES
+INSERT INTO category_features (id, category_id, type, label, `order`) VALUES
   ('a13c1e00-7001-4000-8000-000000000001', 'a13c1e00-1000-4000-8000-000000000001', 'application', 'Bicicletas eléctricas y sillas de ruedas', 1),
   ('a13c1e00-7001-4000-8000-000000000002', 'a13c1e00-1000-4000-8000-000000000001', 'application', 'Coches, triciclos y carritos de golf', 2),
   ('a13c1e00-7001-4000-8000-000000000003', 'a13c1e00-1000-4000-8000-000000000001', 'application', 'Aspiradoras industriales', 3),
@@ -113,7 +113,7 @@ INSERT INTO category_features (id, category_id, type, label, "order") VALUES
 -- =====================================================================
 -- CATEGORY FEATURES: KAISE ELECTRIC VEHICLE TRACCIÓN
 -- =====================================================================
-INSERT INTO category_features (id, category_id, type, label, "order") VALUES
+INSERT INTO category_features (id, category_id, type, label, `order`) VALUES
   ('a13c1e00-7002-4000-8000-000000000001', 'a13c1e00-1000-4000-8000-000000000002', 'application', 'Carretillas elevadoras', 1),
   ('a13c1e00-7002-4000-8000-000000000002', 'a13c1e00-1000-4000-8000-000000000002', 'application', 'Coches de golf', 2),
   ('a13c1e00-7002-4000-8000-000000000003', 'a13c1e00-1000-4000-8000-000000000002', 'application', 'Vehículos eléctricos de carga', 3),
@@ -127,7 +127,7 @@ INSERT INTO category_features (id, category_id, type, label, "order") VALUES
 -- =====================================================================
 -- CATEGORY FEATURES: KAISE LEAD CARBON
 -- =====================================================================
-INSERT INTO category_features (id, category_id, type, label, "order") VALUES
+INSERT INTO category_features (id, category_id, type, label, `order`) VALUES
   ('a13c1e00-7003-4000-8000-000000000001', 'a13c1e00-1000-4000-8000-000000000003', 'application', 'Sistemas de red inteligentes', 1),
   ('a13c1e00-7003-4000-8000-000000000002', 'a13c1e00-1000-4000-8000-000000000003', 'application', 'Sistemas de almacenamiento de energía en el hogar', 2),
   ('a13c1e00-7003-4000-8000-000000000003', 'a13c1e00-1000-4000-8000-000000000003', 'application', 'Sistemas de suministro de energía híbridos', 3),
@@ -145,7 +145,7 @@ INSERT INTO category_features (id, category_id, type, label, "order") VALUES
 -- =====================================================================
 -- CATEGORY FEATURES: KAISE SOLAR GEL
 -- =====================================================================
-INSERT INTO category_features (id, category_id, type, label, "order") VALUES
+INSERT INTO category_features (id, category_id, type, label, `order`) VALUES
   ('a13c1e00-7004-4000-8000-000000000001', 'a13c1e00-1000-4000-8000-000000000004', 'application', 'Energías renovables', 1),
   ('a13c1e00-7004-4000-8000-000000000002', 'a13c1e00-1000-4000-8000-000000000004', 'application', 'Equipos de pruebas eléctricas', 2),
   ('a13c1e00-7004-4000-8000-000000000003', 'a13c1e00-1000-4000-8000-000000000004', 'application', 'Sistemas de iluminación de emergencia', 3),
@@ -161,7 +161,7 @@ INSERT INTO category_features (id, category_id, type, label, "order") VALUES
 -- =====================================================================
 -- CATEGORY FEATURES: KAISE DEEP CYCLE GEL
 -- =====================================================================
-INSERT INTO category_features (id, category_id, type, label, "order") VALUES
+INSERT INTO category_features (id, category_id, type, label, `order`) VALUES
   ('a13c1e00-7005-4000-8000-000000000001', 'a13c1e00-1000-4000-8000-000000000005', 'application', 'Sistemas de energía solar y eólica', 1),
   ('a13c1e00-7005-4000-8000-000000000002', 'a13c1e00-1000-4000-8000-000000000005', 'application', 'Sistemas de TV por cable', 2),
   ('a13c1e00-7005-4000-8000-000000000003', 'a13c1e00-1000-4000-8000-000000000005', 'application', 'Telecomunicaciones', 3),
@@ -186,7 +186,7 @@ INSERT INTO category_features (id, category_id, type, label, "order") VALUES
 -- =====================================================================
 -- CATEGORY FEATURES: KAISE WIND POWER
 -- =====================================================================
-INSERT INTO category_features (id, category_id, type, label, "order") VALUES
+INSERT INTO category_features (id, category_id, type, label, `order`) VALUES
   ('a13c1e00-7006-4000-8000-000000000001', 'a13c1e00-1000-4000-8000-000000000006', 'application', 'Sistema de generación eólica', 1),
   ('a13c1e00-7006-4000-8000-000000000002', 'a13c1e00-1000-4000-8000-000000000006', 'application', 'SAI y EPS', 2),
   ('a13c1e00-7006-4000-8000-000000000003', 'a13c1e00-1000-4000-8000-000000000006', 'application', 'Luces de emergencia', 3),

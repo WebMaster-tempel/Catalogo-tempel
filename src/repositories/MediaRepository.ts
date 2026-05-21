@@ -1,52 +1,48 @@
-import { IDatabase } from 'pg-promise';
+import { DbPool } from '../database/connection';
 import { BaseRepository } from './BaseRepository';
 import { Media } from '../types';
+import { v4 as uuidv4 } from 'uuid';
 
 export class MediaRepository extends BaseRepository {
-  constructor(db: IDatabase<any>) {
+  constructor(db: DbPool) {
     super(db, 'media');
   }
 
   async create(data: Omit<Media, 'id' | 'created_at' | 'updated_at'>): Promise<Media> {
-    return this.db.one(
-      `INSERT INTO media (product_id, type, url, title, "order")
-       VALUES ($1, $2, $3, $4, $5)
-       RETURNING *`,
-      [data.product_id, data.type, data.url, data.title, data.order]
+    const id = uuidv4();
+    await this.db.query(
+      `INSERT INTO media (id, product_id, type, url, title, \`order\`) VALUES (?, ?, ?, ?, ?, ?)`,
+      [id, data.product_id, data.type, data.url, data.title, data.order]
     );
+    return this.findById(id);
   }
 
   async getProductMedia(productId: string): Promise<Media[]> {
-    return this.db.any(
-      `SELECT * FROM media WHERE product_id = $1 ORDER BY "order" ASC`,
+    const [rows] = await this.db.query(
+      'SELECT * FROM media WHERE product_id = ? ORDER BY `order` ASC',
       [productId]
     );
+    return rows as any[];
   }
 
   async update(id: string, data: Partial<Media>): Promise<Media> {
-    const fields = [];
-    const values = [];
-    let paramIndex = 1;
+    const fields: string[] = [];
+    const values: any[] = [];
 
     Object.entries(data).forEach(([key, value]) => {
       if (value !== undefined && key !== 'id' && key !== 'created_at' && key !== 'product_id') {
-        fields.push(`${key} = $${paramIndex}`);
+        fields.push(`\`${key}\` = ?`);
         values.push(value);
-        paramIndex++;
       }
     });
 
-    if (fields.length === 0) {
-      return this.db.one('SELECT * FROM media WHERE id = $1', [id]);
-    }
+    if (fields.length === 0) return this.findById(id);
 
-    fields.push(`updated_at = $${paramIndex}`);
+    fields.push('updated_at = ?');
     values.push(new Date());
     values.push(id);
 
-    return this.db.one(
-      `UPDATE media SET ${fields.join(', ')} WHERE id = $${paramIndex + 1} RETURNING *`,
-      values
-    );
+    await this.db.query(`UPDATE media SET ${fields.join(', ')} WHERE id = ?`, values);
+    return this.findById(id);
   }
 }

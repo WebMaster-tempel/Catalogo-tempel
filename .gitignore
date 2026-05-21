@@ -15,3 +15,5 @@ admin/.env
 *~
 coverage/
 .nyc_output/
+
+.claude

@@ -1,54 +1,50 @@
-import { IDatabase } from 'pg-promise';
+import { DbPool } from '../database/connection';
 import { BaseRepository } from './BaseRepository';
 import { Category, ProductCategory } from '../types';
+import { v4 as uuidv4 } from 'uuid';
 
 export class CategoryRepository extends BaseRepository {
-  constructor(db: IDatabase<any>) {
+  constructor(db: DbPool) {
     super(db, 'categories');
   }
 
   async create(data: Omit<Category, 'id' | 'created_at' | 'updated_at'>): Promise<Category> {
-    return this.db.one(
-      `INSERT INTO categories (name, slug, parent_id, description)
-       VALUES ($1, $2, $3, $4)
-       RETURNING *`,
-      [data.name, data.slug, data.parent_id, data.description]
+    const id = uuidv4();
+    await this.db.query(
+      `INSERT INTO categories (id, name, slug, parent_id, description) VALUES (?, ?, ?, ?, ?)`,
+      [id, data.name, data.slug, data.parent_id, data.description]
     );
+    return this.findById(id);
   }
 
   async findBySlug(slug: string): Promise<Category | null> {
-    return this.db.oneOrNone('SELECT * FROM categories WHERE slug = $1', [slug]);
+    const [rows] = await this.db.query('SELECT * FROM categories WHERE slug = ?', [slug]);
+    return (rows as any[])[0] || null;
   }
 
   async update(id: string, data: Partial<Category>): Promise<Category> {
-    const fields = [];
-    const values = [];
-    let paramIndex = 1;
+    const fields: string[] = [];
+    const values: any[] = [];
 
     Object.entries(data).forEach(([key, value]) => {
       if (value !== undefined && key !== 'id' && key !== 'created_at') {
-        fields.push(`${key} = $${paramIndex}`);
+        fields.push(`\`${key}\` = ?`);
         values.push(value);
-        paramIndex++;
       }
     });
 
-    if (fields.length === 0) {
-      return this.db.one('SELECT * FROM categories WHERE id = $1', [id]);
-    }
+    if (fields.length === 0) return this.findById(id);
 
-    fields.push(`updated_at = $${paramIndex}`);
+    fields.push('updated_at = ?');
     values.push(new Date());
     values.push(id);
 
-    return this.db.one(
-      `UPDATE categories SET ${fields.join(', ')} WHERE id = $${paramIndex + 1} RETURNING *`,
-      values
-    );
+    await this.db.query(`UPDATE categories SET ${fields.join(', ')} WHERE id = ?`, values);
+    return this.findById(id);
   }
 
   async getHierarchyTree(): Promise<any[]> {
-    return this.db.any(
+    const [rows] = await this.db.query(
       `WITH RECURSIVE category_tree AS (
          SELECT id, name, slug, parent_id, 0 as level
          FROM categories WHERE parent_id IS NULL
@@ -59,36 +55,44 @@ export class CategoryRepository extends BaseRepository {
        )
        SELECT * FROM category_tree ORDER BY level, name`
     );
+    return rows as any[];
   }
 
   async getChildCategories(parentId: string): Promise<Category[]> {
-    return this.db.any('SELECT * FROM categories WHERE parent_id = $1 ORDER BY name', [parentId]);
+    const [rows] = await this.db.query(
+      'SELECT * FROM categories WHERE parent_id = ? ORDER BY name',
+      [parentId]
+    );
+    return rows as any[];
   }
 
   async assignProduct(productId: string, categoryId: string): Promise<ProductCategory> {
-    return this.db.one(
-      `INSERT INTO product_categories (product_id, category_id)
-       VALUES ($1, $2)
-       ON CONFLICT DO NOTHING
-       RETURNING *`,
+    await this.db.query(
+      `INSERT IGNORE INTO product_categories (product_id, category_id) VALUES (?, ?)`,
       [productId, categoryId]
     );
+    const [rows] = await this.db.query(
+      'SELECT * FROM product_categories WHERE product_id = ? AND category_id = ?',
+      [productId, categoryId]
+    );
+    return (rows as any[])[0];
   }
 
   async removeProduct(productId: string, categoryId: string): Promise<boolean> {
-    const result = await this.db.result(
-      `DELETE FROM product_categories WHERE product_id = $1 AND category_id = $2`,
+    const [result] = await this.db.query(
+      'DELETE FROM product_categories WHERE product_id = ? AND category_id = ?',
       [productId, categoryId]
     );
-    return result.rowCount > 0;
+    return (result as any).affectedRows > 0;
   }
 
   async getProductCategories(productId: string): Promise<Category[]> {
-    return this.db.any(
+    const [rows] = await this.db.query(
       `SELECT c.* FROM categories c
        JOIN product_categories pc ON c.id = pc.category_id
-       WHERE pc.product_id = $1`,
+       WHERE pc.product_id = ?`,
       [productId]
     );
+    return rows as any[];
   }
 }

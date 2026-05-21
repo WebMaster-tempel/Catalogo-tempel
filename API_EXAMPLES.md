@@ -87,11 +87,24 @@ curl "http://localhost:3000/api/v1/products?search=KBSG&status=published&categor
 |---|---|---|---|
 | `page` | integer | 1 | Página (≥1) |
 | `per_page` | integer | 20 | Resultados por página (1–100) |
-| `search` | string | — | Búsqueda por nombre/descripción (ILIKE) |
-| `category_id` | UUID | — | Filtrar por categoría |
+| `search` | string | — | Texto libre — busca en nombre, descripción del producto **y** nombre, aplicaciones, características y descripción de su categoría (ILIKE) |
+| `category_id` | UUID | — | Filtrar por ID de categoría exacto |
 | `product_type_id` | UUID | — | Filtrar por tipo de producto |
 | `status` | string | — | `draft`, `published`, `archived` |
-| `filters[campo]` | any | — | Filtro por atributo dinámico JSONB |
+| `filters[campo]` | any | — | Filtro exacto por atributo dinámico JSONB del producto |
+| **Filtros de categoría** | | | |
+| `application` | string | — | Keyword en `categories.applications` (ILIKE) — ej: `Telecomunicaciones` |
+| `technology` | string | — | Tecnología de la categoría (ILIKE) — ej: `VRLA-AGM`, `LiFePO4`, `VRLA-GEL` |
+| `plate_type` | string | — | Tipo de placa (ILIKE) — ej: `Tubular`, `Flat`, `Prismática` |
+| `eurobat` | boolean | — | Solo gammas certificadas Eurobat (`true`/`false`) |
+| `capacity_range` | string | — | Keyword en rango de capacidad textual de la categoría — ej: `3000`, `C10` |
+| `characteristics` | string | — | Keyword en características técnicas de la categoría — ej: `-40°C`, `gel puro`, `PSoC` |
+| **Filtros numéricos del producto** | | | |
+| `capacity_min` | number | — | Capacidad mínima en Ah (filtra `attributes_json.capacity_nominal_10h`) |
+| `capacity_max` | number | — | Capacidad máxima en Ah (filtra `attributes_json.capacity_nominal_10h`) |
+| `voltage` | number | — | Tensión exacta en V (filtra `attributes_json.voltage`) — usar `12.8` para Litio |
+
+> Todos los parámetros son combinables. La lógica es `AND` entre parámetros.
 
 **Respuesta:**
 
@@ -683,47 +696,227 @@ curl -X POST http://localhost:3000/api/v1/attributes \
 
 ---
 
-## 8. Filtrado avanzado — Casos de uso reales
+## 8. Búsqueda avanzada — Casos de uso reales verificados
 
-### Encontrar baterías 12V de la gama KAISE SOLAR GEL
+> Todos los resultados a continuación son reales contra la base de datos de producción.
+
+---
+
+### Por aplicación: baterías para Telecomunicaciones
+
+Busca en el campo `applications` de todas las categorías del catálogo.
 
 ```bash
-curl "http://localhost:3000/api/v1/products?\
-category_id=a13c1e00-1000-4000-8000-000000000004\
-&filters[voltage]=12\
-&status=published"
+curl "http://localhost:3000/api/v1/products?application=Telecomunicaciones&status=published"
 ```
 
-### Baterías de alto voltaje (2V) en la gama OPzV
+**Resultado:** `total: 119` — incluye KAISE LITIO, LONG LIFE, HIGH RATE, FRONT TERMINAL, OPzV, HIGH TEMPERATURE, etc.
 
-```bash
-curl "http://localhost:3000/api/v1/products?\
-category_id=a15c1e00-1000-4000-8000-00000000000b\
-&filters[voltage]=2"
+```json
+{
+  "meta": { "pagination": { "total": 119, "total_pages": 6 } },
+  "data": [
+    { "name": "KBLI1270F1", "categories": [{"name": "KAISE LITIO"}] },
+    { "name": "KBLL7200", "categories": [{"name": "KAISE LONG LIFE"}] }
+  ]
+}
 ```
 
-### Buscar cualquier batería de 100Ah publicada
+---
+
+### Por aplicación: baterías para Bicicletas eléctricas
 
 ```bash
-curl "http://localhost:3000/api/v1/products?\
-filters[capacity]=100\
-&status=published\
-&per_page=50"
+curl "http://localhost:3000/api/v1/products?application=Bicicletas"
 ```
 
-### Listar todos los productos Litio
+**Resultado:** `total: 11` — toda la gama KAISE ELECTRIC VEHICLE.
+
+---
+
+### Por aplicación: baterías para energía solar
 
 ```bash
-# Usando la categoría gamma KAISE LITIO
-curl "http://localhost:3000/api/v1/products?\
-category_id=a11c1e00-1000-4000-8000-000000000001\
-&status=published"
+curl "http://localhost:3000/api/v1/products?application=solar&status=published"
 ```
 
-### Paginación: obtener página 3 con 50 resultados por página
+**Resultado:** `total: 80` — KAISE SOLAR, SOLAR GEL, LEAD CARBON, DEEP CYCLE GEL, LITIO, etc.
+
+---
+
+### Por aplicación + tecnología: solar con tecnología GEL
 
 ```bash
-curl "http://localhost:3000/api/v1/products?page=3&per_page=50&status=published"
+curl "http://localhost:3000/api/v1/products?application=solar&technology=VRLA-GEL"
+```
+
+**Resultado:** `total: 31` — solo KAISE SOLAR GEL y KAISE DEEP CYCLE GEL.
+
+---
+
+### Por tipo de placa: todas las baterías Tubular
+
+```bash
+curl "http://localhost:3000/api/v1/products?plate_type=Tubular"
+```
+
+**Resultado:** `total: 28` — KAISE OPzV (GEL Tubular 2V/12V) + KAISE EV TRACCIÓN.
+
+---
+
+### Por tipo de placa + rango de capacidad: Tubular con capacidades hasta 3000 Ah
+
+La consulta exacta del usuario: "capacidad de 60 – 3000 Ah (C10) y que sea Tubular".
+
+```bash
+curl "http://localhost:3000/api/v1/products?plate_type=Tubular&capacity_range=3000"
+```
+
+**Resultado:** `total: 20` — exclusivamente KAISE OPzV (la única gamma Tubular con ese rango).
+
+```json
+{
+  "meta": { "pagination": { "total": 20, "total_pages": 1 } },
+  "data": [
+    { "name": "KBOPZV2200",  "attributes_json": { "voltage": 2,  "capacity": 200  } },
+    { "name": "KBOPZV2300",  "attributes_json": { "voltage": 2,  "capacity": 300  } },
+    { "name": "KBOPZV23000", "attributes_json": { "voltage": 2,  "capacity": 3000 } },
+    { "name": "KBOPZV1260",  "attributes_json": { "voltage": 12, "capacity": 60   } }
+  ]
+}
+```
+
+---
+
+### Por características: rango de temperatura de funcionamiento -40°C a +80°C
+
+Busca en el campo `characteristics` de la categoría.
+
+```bash
+# Buscar por rango de temperatura en las características
+curl "http://localhost:3000/api/v1/products?characteristics=-40%C2%B0C"
+
+# Alternativa — también funciona con search general
+curl "http://localhost:3000/api/v1/products?search=-40%C2%B0C"
+```
+
+**Resultado:** `total: 19` — exclusivamente KAISE HIGH TEMPERATURE (cuyo campo `characteristics` contiene `Rango de temperatura: -40°C a +80°C`).
+
+---
+
+### Por características: tecnología gel puro
+
+```bash
+curl "http://localhost:3000/api/v1/products?characteristics=gel+puro"
+```
+
+**Resultado:** baterías KAISE OPzV y KAISE DEEP CYCLE GEL (ambas con electrolito gel puro en sus características).
+
+---
+
+### Por características: comportamiento PSoC (Partial State of Charge)
+
+```bash
+curl "http://localhost:3000/api/v1/products?characteristics=PSoC"
+```
+
+**Resultado:** KAISE LEAD CARBON, KAISE LITIO y otras gammas con comportamiento PSoC documentado.
+
+---
+
+### Por tecnología: todas las baterías LiFePO4
+
+```bash
+curl "http://localhost:3000/api/v1/products?technology=LiFePO4&status=published"
+```
+
+**Resultado:** toda la gama KAISE LITIO.
+
+---
+
+### Certficación Eurobat + capacidad entre 200 y 500 Ah
+
+```bash
+curl "http://localhost:3000/api/v1/products?eurobat=true&capacity_min=200&capacity_max=500"
+```
+
+**Resultado:** `total: 5` — baterías EV y Lead Carbon en ese rango de capacidad con certificación Eurobat.
+
+---
+
+### Voltage exacto + tecnología: baterías Litio a 12.8V
+
+> Nota: las baterías LiFePO4 tienen `voltage: 12.8`, no `12`. Usar el valor exacto del atributo.
+
+```bash
+curl "http://localhost:3000/api/v1/products?technology=LiFePO4&voltage=12.8&per_page=50"
+```
+
+---
+
+### Por atributos dinámicos exactos (JSONB)
+
+```bash
+# Baterías 12V de 100Ah exactos (campo capacity en attributes_json)
+curl "http://localhost:3000/api/v1/products?filters[voltage]=12&filters[capacity]=100"
+
+# Baterías 2V OPzV de 1000Ah
+curl "http://localhost:3000/api/v1/products?filters[voltage]=2&filters[capacity]=1000"
+
+# Por código de modelo exacto
+curl "http://localhost:3000/api/v1/products?filters[model_code]=KBOPZV2200"
+```
+
+---
+
+### Búsqueda libre con `search` (cubre todos los campos de texto)
+
+El parámetro `search` busca simultáneamente en:
+- `products.name` y `products.description`
+- `categories.name`, `categories.applications`, `categories.characteristics`, `categories.description`
+
+```bash
+# Encuentra cualquier producto cuya categoría mencione "SAI" en aplicaciones o características
+curl "http://localhost:3000/api/v1/products?search=SAI"
+
+# Encuentra High Temperature por sus características técnicas
+curl "http://localhost:3000/api/v1/products?search=alta+temperatura"
+
+# Resultado equivalente al filtro directo
+curl "http://localhost:3000/api/v1/products?search=Telecomunicaciones"
+# total: 119 — igual que ?application=Telecomunicaciones
+```
+
+---
+
+### Combinaciones multi-parámetro
+
+```bash
+# Baterías Tubular, para telecomunicaciones, certificadas Eurobat
+curl "http://localhost:3000/api/v1/products?plate_type=Tubular&application=Telecomunicaciones&eurobat=true"
+
+# Baterías GEL para energías renovables publicadas, página 2
+curl "http://localhost:3000/api/v1/products?technology=VRLA-GEL&application=renovable&status=published&page=2&per_page=20"
+
+# Baterías AGM de larga vida para UPS, entre 100 y 250 Ah
+curl "http://localhost:3000/api/v1/products?technology=VRLA-AGM&application=SAI&capacity_min=100&capacity_max=250&eurobat=true"
+
+# Paginación: página 3, 50 resultados por página, solo publicados
+curl "http://localhost:3000/api/v1/products?status=published&page=3&per_page=50"
+```
+
+---
+
+### Baterías de la gama KAISE SOLAR GEL, 12V (filtro por categoría + atributo)
+
+```bash
+curl "http://localhost:3000/api/v1/products?category_id=a13c1e00-1000-4000-8000-000000000004&filters[voltage]=12&status=published"
+```
+
+### Baterías OPzV de 2V (por categoría exacta + voltage)
+
+```bash
+curl "http://localhost:3000/api/v1/products?category_id=a15c1e00-1000-4000-8000-00000000000b&voltage=2"
 ```
 
 ---

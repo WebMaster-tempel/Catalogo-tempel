@@ -4,37 +4,46 @@ import { db } from '../database/connection';
 
 async function runMigrations() {
   try {
-    console.log('Running migrations...');
+    console.log('Running MySQL migrations...');
 
-    // Create migrations table if it doesn't exist
-    await db.none(`
+    await db.execute(`
       CREATE TABLE IF NOT EXISTS _migrations (
-        id SERIAL PRIMARY KEY,
-        name VARCHAR(255) NOT NULL UNIQUE,
-        executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
+        id          INT AUTO_INCREMENT PRIMARY KEY,
+        name        VARCHAR(255) NOT NULL,
+        executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY uq_migration_name (name)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
 
-    // Get all migration files
     const migrationsDir = path.join(__dirname);
     const files = fs
       .readdirSync(migrationsDir)
-      .filter((f) => f.endsWith('.sql') && f !== 'runner.ts')
+      .filter((f) => f.endsWith('.sql'))
       .sort();
 
     for (const file of files) {
-      // Check if migration has been run
-      const result = await db.oneOrNone('SELECT * FROM _migrations WHERE name = $1', [file]);
+      const [rows] = await db.execute(
+        'SELECT id FROM _migrations WHERE name = ?',
+        [file]
+      );
 
-      if (!result) {
-        const filePath = path.join(migrationsDir, file);
-        const sql = fs.readFileSync(filePath, 'utf-8');
-
+      if ((rows as any[]).length === 0) {
+        const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf-8');
         console.log(`Executing migration: ${file}`);
-        await db.none(sql);
-
-        // Record migration
-        await db.none('INSERT INTO _migrations (name) VALUES ($1)', [file]);
+        const statements = sql
+          .split(';')
+          .map((s) =>
+            s
+              .split('\n')
+              .filter((line) => !line.trim().startsWith('--'))
+              .join('\n')
+              .trim()
+          )
+          .filter((s) => s.length > 0);
+        for (const stmt of statements) {
+          await db.query(stmt);
+        }
+        await db.query('INSERT INTO _migrations (name) VALUES (?)', [file]);
         console.log(`✓ ${file}`);
       } else {
         console.log(`⊘ ${file} (already executed)`);

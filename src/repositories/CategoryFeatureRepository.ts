@@ -1,77 +1,76 @@
-import { IDatabase } from 'pg-promise';
+import { DbPool } from '../database/connection';
 import { BaseRepository } from './BaseRepository';
 import { CategoryFeature } from '../types';
+import { v4 as uuidv4 } from 'uuid';
 
 export class CategoryFeatureRepository extends BaseRepository {
-  constructor(db: IDatabase<any>) {
+  constructor(db: DbPool) {
     super(db, 'category_features');
   }
 
   async findByCategoryId(categoryId: string): Promise<CategoryFeature[]> {
-    return this.db.any(
-      'SELECT * FROM category_features WHERE category_id = $1 ORDER BY type, "order"',
+    const [rows] = await this.db.query(
+      'SELECT * FROM category_features WHERE category_id = ? ORDER BY type, `order`',
       [categoryId]
     );
+    return rows as any[];
   }
 
   async findByType(categoryId: string, type: string): Promise<CategoryFeature[]> {
     const validTypes = ['application', 'characteristic'];
     const validType = validTypes.includes(type) ? type : 'application';
-    return this.db.any(
-      'SELECT * FROM category_features WHERE category_id = $1 AND type = $2 ORDER BY "order"',
+    const [rows] = await this.db.query(
+      'SELECT * FROM category_features WHERE category_id = ? AND type = ? ORDER BY `order`',
       [categoryId, validType]
     );
+    return rows as any[];
   }
 
   async create(data: Omit<CategoryFeature, 'id' | 'created_at' | 'updated_at'>): Promise<CategoryFeature> {
-    return this.db.one(
-      `INSERT INTO category_features (category_id, type, label, "order")
-       VALUES ($1, $2, $3, $4)
-       RETURNING *`,
-      [data.category_id, data.type, data.label, data.order || 0]
+    const id = uuidv4();
+    await this.db.query(
+      'INSERT INTO category_features (id, category_id, type, label, `order`) VALUES (?, ?, ?, ?, ?)',
+      [id, data.category_id, data.type, data.label, data.order || 0]
     );
+    return this.findById(id);
   }
 
   async update(id: string, data: Partial<CategoryFeature>): Promise<CategoryFeature> {
-    const fields = [];
-    const values = [];
-    let paramIndex = 1;
+    const fields: string[] = [];
+    const values: any[] = [];
 
     const allowed = ['label', 'type', 'order'];
     Object.entries(data).forEach(([key, value]) => {
       if (allowed.includes(key) && value !== undefined) {
-        fields.push(`${key} = $${paramIndex}`);
+        fields.push(`\`${key}\` = ?`);
         values.push(value);
-        paramIndex++;
       }
     });
 
-    if (fields.length === 0) {
-      return this.db.one('SELECT * FROM category_features WHERE id = $1', [id]);
-    }
+    if (fields.length === 0) return this.findById(id);
 
-    fields.push(`updated_at = $${paramIndex}`);
+    fields.push('updated_at = ?');
     values.push(new Date());
     values.push(id);
 
-    return this.db.one(
-      `UPDATE category_features SET ${fields.join(', ')} WHERE id = $${paramIndex + 1} RETURNING *`,
-      values
-    );
+    await this.db.query(`UPDATE category_features SET ${fields.join(', ')} WHERE id = ?`, values);
+    return this.findById(id);
   }
 
   async reorder(categoryId: string, featureIds: string[]): Promise<void> {
-    const queries = featureIds.map((id, index) =>
-      this.db.none('UPDATE category_features SET "order" = $1 WHERE id = $2', [index + 1, id])
-    );
-    await this.db.tx((t) => t.batch(queries));
+    for (let i = 0; i < featureIds.length; i++) {
+      await this.db.query(
+        'UPDATE category_features SET `order` = ? WHERE id = ? AND category_id = ?',
+        [i + 1, featureIds[i], categoryId]
+      );
+    }
   }
 
   async deleteByCategoryId(categoryId: string): Promise<boolean> {
-    const result = await this.db.result(
-      'DELETE FROM category_features WHERE category_id = $1',
+    const [result] = await this.db.query(
+      'DELETE FROM category_features WHERE category_id = ?',
       [categoryId]
     );
-    return result.rowCount > 0;
+    return (result as any).affectedRows > 0;
   }
 }

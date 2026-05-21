@@ -82,7 +82,7 @@ INSERT INTO categories (id, name, slug, description, parent_id,
 -- =====================================================================
 -- CATEGORY FEATURES: KAISE HIGH RATE
 -- =====================================================================
-INSERT INTO category_features (id, category_id, type, label, "order") VALUES
+INSERT INTO category_features (id, category_id, type, label, `order`) VALUES
   ('a11c1e00-7005-4000-8000-000000000001', 'a11c1e00-1000-4000-8000-000000000005', 'application', 'Telecomunicaciones', 1),
   ('a11c1e00-7005-4000-8000-000000000002', 'a11c1e00-1000-4000-8000-000000000005', 'application', 'Equipos SAI', 2),
   ('a11c1e00-7005-4000-8000-000000000003', 'a11c1e00-1000-4000-8000-000000000005', 'application', 'Instalaciones eléctricas', 3),
@@ -100,7 +100,7 @@ INSERT INTO category_features (id, category_id, type, label, "order") VALUES
 -- =====================================================================
 -- CATEGORY FEATURES: KAISE SOLAR AGM
 -- =====================================================================
-INSERT INTO category_features (id, category_id, type, label, "order") VALUES
+INSERT INTO category_features (id, category_id, type, label, `order`) VALUES
   ('a11c1e00-7006-4000-8000-000000000001', 'a11c1e00-1000-4000-8000-000000000006', 'application', 'Energías renovables', 1),
   ('a11c1e00-7006-4000-8000-000000000002', 'a11c1e00-1000-4000-8000-000000000006', 'application', 'Equipos de pruebas eléctricas', 2),
   ('a11c1e00-7006-4000-8000-000000000003', 'a11c1e00-1000-4000-8000-000000000006', 'application', 'Sistemas de iluminación de emergencia', 3),
@@ -115,7 +115,7 @@ INSERT INTO category_features (id, category_id, type, label, "order") VALUES
 -- =====================================================================
 -- CATEGORY FEATURES: KAISE DEEP CYCLE
 -- =====================================================================
-INSERT INTO category_features (id, category_id, type, label, "order") VALUES
+INSERT INTO category_features (id, category_id, type, label, `order`) VALUES
   ('a11c1e00-7007-4000-8000-000000000001', 'a11c1e00-1000-4000-8000-000000000007', 'application', 'Sistemas de energía solar', 1),
   ('a11c1e00-7007-4000-8000-000000000002', 'a11c1e00-1000-4000-8000-000000000007', 'application', 'Sillas de ruedas eléctricas', 2),
   ('a11c1e00-7007-4000-8000-000000000003', 'a11c1e00-1000-4000-8000-000000000007', 'application', 'Coches de Golf', 3),
@@ -136,7 +136,7 @@ INSERT INTO category_features (id, category_id, type, label, "order") VALUES
 -- =====================================================================
 -- CATEGORY FEATURES: KAISE FRONT TERMINAL
 -- =====================================================================
-INSERT INTO category_features (id, category_id, type, label, "order") VALUES
+INSERT INTO category_features (id, category_id, type, label, `order`) VALUES
   ('a11c1e00-7008-4000-8000-000000000001', 'a11c1e00-1000-4000-8000-000000000008', 'application', 'Sistemas de telecomunicaciones', 1),
   ('a11c1e00-7008-4000-8000-000000000002', 'a11c1e00-1000-4000-8000-000000000008', 'application', 'SAI', 2),
   ('a11c1e00-7008-4000-8000-000000000003', 'a11c1e00-1000-4000-8000-000000000008', 'application', 'Centrales eléctricas', 3),
@@ -153,7 +153,7 @@ INSERT INTO category_features (id, category_id, type, label, "order") VALUES
 -- =====================================================================
 -- CATEGORY FEATURES: KAISE HIGH TEMPERATURE
 -- =====================================================================
-INSERT INTO category_features (id, category_id, type, label, "order") VALUES
+INSERT INTO category_features (id, category_id, type, label, `order`) VALUES
   ('a11c1e00-7009-4000-8000-000000000001', 'a11c1e00-1000-4000-8000-000000000009', 'application', 'Estaciones híbridas remotas de telecomunicaciones', 1),
   ('a11c1e00-7009-4000-8000-000000000002', 'a11c1e00-1000-4000-8000-000000000009', 'application', 'Energías renovables, eólica y solar', 2),
   ('a11c1e00-7009-4000-8000-000000000003', 'a11c1e00-1000-4000-8000-000000000009', 'application', 'Sistemas de nivelación de frecuencia de red', 3),

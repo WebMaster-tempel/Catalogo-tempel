@@ -1,8 +1,4 @@
--- Seed KAISE STANDARD category features from PDF page 10
-BEGIN;
-
--- KAISE STANDARD Applications
-INSERT INTO category_features (id, category_id, type, label, "order") VALUES
+INSERT INTO category_features (id, category_id, type, label, `order`) VALUES
   ('a11c1e00-6000-4000-8000-000000000001', 'a11c1e00-1000-4000-8000-000000000002', 'application', 'Sistemas de alarma', 1),
   ('a11c1e00-6000-4000-8000-000000000002', 'a11c1e00-1000-4000-8000-000000000002', 'application', 'TV por cable', 2),
   ('a11c1e00-6000-4000-8000-000000000003', 'a11c1e00-1000-4000-8000-000000000002', 'application', 'Equipo de comunicaciones', 3),
@@ -21,14 +17,10 @@ INSERT INTO category_features (id, category_id, type, label, "order") VALUES
   ('a11c1e00-6000-4000-8000-000000000010', 'a11c1e00-1000-4000-8000-000000000002', 'application', 'Juguetes', 16),
   ('a11c1e00-6000-4000-8000-000000000011', 'a11c1e00-1000-4000-8000-000000000002', 'application', 'SAI', 17),
   ('a11c1e00-6000-4000-8000-000000000012', 'a11c1e00-1000-4000-8000-000000000002', 'application', 'Máquinas de venta automática', 18),
-
--- KAISE STANDARD Characteristics
   ('a11c1e00-6000-4000-8000-000000000013', 'a11c1e00-1000-4000-8000-000000000002', 'characteristic', 'Estabilidad y alta fiabilidad', 1),
   ('a11c1e00-6000-4000-8000-000000000014', 'a11c1e00-1000-4000-8000-000000000002', 'characteristic', 'Modo de construcción sellada', 2),
   ('a11c1e00-6000-4000-8000-000000000015', 'a11c1e00-1000-4000-8000-000000000002', 'characteristic', 'Libre de mantenimiento convencional', 3),
   ('a11c1e00-6000-4000-8000-000000000016', 'a11c1e00-1000-4000-8000-000000000002', 'characteristic', 'Reguladas por válvula', 4),
   ('a11c1e00-6000-4000-8000-000000000017', 'a11c1e00-1000-4000-8000-000000000002', 'characteristic', 'Rejilla de alta resistencia', 5),
   ('a11c1e00-6000-4000-8000-000000000018', 'a11c1e00-1000-4000-8000-000000000002', 'characteristic', 'Baja autodescarga', 6),
-  ('a11c1e00-6000-4000-8000-000000000019', 'a11c1e00-1000-4000-8000-000000000002', 'characteristic', 'Componentes UL reconocidos (25860)', 7);
-
-COMMIT;
+  ('a11c1e00-6000-4000-8000-000000000019', 'a11c1e00-1000-4000-8000-000000000002', 'characteristic', 'Componentes UL reconocidos (25860)', 7)

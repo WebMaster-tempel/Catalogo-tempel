@@ -22,7 +22,7 @@ export interface AttributeWithMeta extends Attribute {
 export interface CategoryFeature {
   id: string;
   category_id: string;
-  type: 'application' | 'characteristic' | 'compatibility';
+  type: 'application' | 'characteristic' | 'compatibility' | 'video';
   label: string;
   order: number;
   suitability?: 'best' | 'suitable' | null;

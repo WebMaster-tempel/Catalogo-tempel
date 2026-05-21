@@ -13,6 +13,7 @@ export default function Layout() {
           <li><NavLink to="/categories">Categorías</NavLink></li>
           <li><NavLink to="/product-types">Tipos</NavLink></li>
           <li><NavLink to="/attributes">Atributos</NavLink></li>
+          <li><NavLink to="/api-reference">API Reference</NavLink></li>
         </ul>
         <div className="sidebar-footer">
           <a href="/api/v1" target="_blank" rel="noopener noreferrer">API →</a>

@@ -1,11 +1,11 @@
-import { IDatabase } from 'pg-promise';
+import { DbPool } from '../database/connection';
 import { CategoryFeatureRepository } from '../repositories/CategoryFeatureRepository';
 import { CategoryFeature } from '../types';
 
 export class CategoryFeatureService {
   private repo: CategoryFeatureRepository;
 
-  constructor(db: IDatabase<any>) {
+  constructor(db: DbPool) {
     this.repo = new CategoryFeatureRepository(db);
   }
 
@@ -46,4 +46,3 @@ export class CategoryFeatureService {
     return this.repo.reorder(categoryId, featureIds);
   }
 }
-
