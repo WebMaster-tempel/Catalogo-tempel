@@ -1,108 +1,108 @@
--- Create extensions
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-CREATE EXTENSION IF NOT EXISTS pg_trgm;
-
--- ProductType table
-CREATE TABLE product_types (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+CREATE TABLE IF NOT EXISTS product_types (
+    id CHAR(36) PRIMARY KEY,
     name VARCHAR(255) NOT NULL UNIQUE,
     description TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- Attribute table (global attribute definitions)
-CREATE TABLE attributes (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+CREATE TABLE IF NOT EXISTS attributes (
+    id CHAR(36) PRIMARY KEY,
     name VARCHAR(255) NOT NULL UNIQUE,
     label VARCHAR(255) NOT NULL,
-    data_type VARCHAR(50) NOT NULL CHECK (data_type IN ('string', 'number', 'boolean', 'date')),
+    data_type VARCHAR(50) NOT NULL,
     unit VARCHAR(50),
-    is_filterable BOOLEAN DEFAULT FALSE,
+    is_filterable TINYINT(1) DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT chk_data_type CHECK (data_type IN ('string', 'number', 'boolean', 'date'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- ProductTypeAttribute mapping (which attributes belong to which type)
-CREATE TABLE product_type_attributes (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    product_type_id UUID NOT NULL REFERENCES product_types(id) ON DELETE CASCADE,
-    attribute_id UUID NOT NULL REFERENCES attributes(id) ON DELETE CASCADE,
-    is_required BOOLEAN DEFAULT FALSE,
-    "order" INT DEFAULT 0,
+CREATE TABLE IF NOT EXISTS product_type_attributes (
+    id CHAR(36) PRIMARY KEY,
+    product_type_id CHAR(36) NOT NULL,
+    attribute_id CHAR(36) NOT NULL,
+    is_required TINYINT(1) DEFAULT 0,
+    `order` INT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(product_type_id, attribute_id)
-);
+    UNIQUE KEY uq_pta (product_type_id, attribute_id),
+    CONSTRAINT fk_pta_product_type FOREIGN KEY (product_type_id) REFERENCES product_types(id) ON DELETE CASCADE,
+    CONSTRAINT fk_pta_attribute FOREIGN KEY (attribute_id) REFERENCES attributes(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- Category table (hierarchical)
-CREATE TABLE categories (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+CREATE TABLE IF NOT EXISTS categories (
+    id CHAR(36) PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     slug VARCHAR(255) NOT NULL UNIQUE,
-    parent_id UUID REFERENCES categories(id) ON DELETE SET NULL,
+    parent_id CHAR(36),
     description TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_category_parent FOREIGN KEY (parent_id) REFERENCES categories(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- Product table
-CREATE TABLE products (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+CREATE TABLE IF NOT EXISTS products (
+    id CHAR(36) PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     slug VARCHAR(255) NOT NULL UNIQUE,
     description TEXT,
-    product_type_id UUID NOT NULL REFERENCES product_types(id) ON DELETE RESTRICT,
-    status VARCHAR(50) DEFAULT 'draft' CHECK (status IN ('draft', 'published', 'archived')),
-    main_image_id UUID,
+    product_type_id CHAR(36) NOT NULL,
+    status VARCHAR(50) DEFAULT 'draft',
+    main_image_id CHAR(36),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT chk_status CHECK (status IN ('draft', 'published', 'archived')),
+    CONSTRAINT fk_product_type FOREIGN KEY (product_type_id) REFERENCES product_types(id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- ProductAttributeValues (JSON-based storage of dynamic attributes)
-CREATE TABLE product_attribute_values (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    product_id UUID NOT NULL UNIQUE REFERENCES products(id) ON DELETE CASCADE,
-    attributes_json JSONB DEFAULT '{}',
+CREATE TABLE IF NOT EXISTS product_attribute_values (
+    id CHAR(36) PRIMARY KEY,
+    product_id CHAR(36) NOT NULL UNIQUE,
+    attributes_json JSON,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_pav_product FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- ProductCategory (many-to-many)
-CREATE TABLE product_categories (
-    product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
-    category_id UUID NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
-    PRIMARY KEY (product_id, category_id)
-);
+CREATE TABLE IF NOT EXISTS product_categories (
+    product_id CHAR(36) NOT NULL,
+    category_id CHAR(36) NOT NULL,
+    PRIMARY KEY (product_id, category_id),
+    CONSTRAINT fk_pc_product FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+    CONSTRAINT fk_pc_category FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- Media table
-CREATE TABLE media (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
-    type VARCHAR(50) NOT NULL CHECK (type IN ('image', 'pdf')),
+CREATE TABLE IF NOT EXISTS media (
+    id CHAR(36) PRIMARY KEY,
+    product_id CHAR(36) NOT NULL,
+    type VARCHAR(50) NOT NULL,
     url TEXT NOT NULL,
     title VARCHAR(255),
-    "order" INT DEFAULT 0,
+    `order` INT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT chk_media_type CHECK (type IN ('image', 'pdf')),
+    CONSTRAINT fk_media_product FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- Create indexes for performance
 CREATE INDEX idx_products_product_type_id ON products(product_type_id);
+
 CREATE INDEX idx_products_status ON products(status);
+
 CREATE INDEX idx_products_slug ON products(slug);
-CREATE INDEX idx_products_name_trgm ON products USING gin(name gin_trgm_ops);
-CREATE INDEX idx_products_description_trgm ON products USING gin(description gin_trgm_ops);
+
+CREATE INDEX idx_products_name ON products(name);
 
 CREATE INDEX idx_product_categories_category_id ON product_categories(category_id);
-CREATE INDEX idx_product_categories_product_id ON product_categories(product_id);
 
-CREATE INDEX idx_product_attribute_values_attributes_json ON product_attribute_values USING GIN(attributes_json);
+CREATE INDEX idx_product_categories_product_id ON product_categories(product_id);
 
 CREATE INDEX idx_media_product_id ON media(product_id);
 
 CREATE INDEX idx_product_type_attributes_product_type_id ON product_type_attributes(product_type_id);
+
 CREATE INDEX idx_product_type_attributes_attribute_id ON product_type_attributes(attribute_id);
 
 CREATE INDEX idx_categories_parent_id ON categories(parent_id);
-CREATE INDEX idx_categories_slug ON categories(slug);
 
+CREATE INDEX idx_categories_slug ON categories(slug)

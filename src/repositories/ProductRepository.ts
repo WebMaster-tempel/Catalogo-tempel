@@ -1,51 +1,47 @@
-import { IDatabase } from 'pg-promise';
+import { DbPool } from '../database/connection';
 import { BaseRepository } from './BaseRepository';
 import { Product, QueryOptions, PaginationMeta } from '../types';
+import { v4 as uuidv4 } from 'uuid';
 
 export class ProductRepository extends BaseRepository {
-  constructor(db: IDatabase<any>) {
+  constructor(db: DbPool) {
     super(db, 'products');
   }
 
   async findBySlug(slug: string): Promise<Product | null> {
-    return this.db.oneOrNone('SELECT * FROM products WHERE slug = $1', [slug]);
+    const [rows] = await this.db.query('SELECT * FROM products WHERE slug = ?', [slug]);
+    return (rows as any[])[0] || null;
   }
 
   async create(data: Omit<Product, 'id' | 'created_at' | 'updated_at'>): Promise<Product> {
-    const result = await this.db.one(
-      `INSERT INTO products (name, slug, description, product_type_id, status, main_image_id)
-       VALUES ($1, $2, $3, $4, $5, $6)
-       RETURNING *`,
-      [data.name, data.slug, data.description, data.product_type_id, data.status, data.main_image_id]
+    const id = uuidv4();
+    await this.db.query(
+      `INSERT INTO products (id, name, slug, description, product_type_id, status, main_image_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [id, data.name, data.slug, data.description, data.product_type_id, data.status, data.main_image_id]
     );
-    return result;
+    return this.findById(id);
   }
 
   async update(id: string, data: Partial<Product>): Promise<Product> {
-    const fields = [];
-    const values = [];
-    let paramIndex = 1;
+    const fields: string[] = [];
+    const values: any[] = [];
 
     Object.entries(data).forEach(([key, value]) => {
       if (value !== undefined && key !== 'id' && key !== 'created_at') {
-        fields.push(`${key} = $${paramIndex}`);
+        fields.push(`\`${key}\` = ?`);
         values.push(value);
-        paramIndex++;
       }
     });
 
-    if (fields.length === 0) {
-      return this.db.one('SELECT * FROM products WHERE id = $1', [id]);
-    }
+    if (fields.length === 0) return this.findById(id);
 
-    fields.push(`updated_at = $${paramIndex}`);
+    fields.push('updated_at = ?');
     values.push(new Date());
     values.push(id);
 
-    return this.db.one(
-      `UPDATE products SET ${fields.join(', ')} WHERE id = $${paramIndex + 1} RETURNING *`,
-      values
-    );
+    await this.db.query(`UPDATE products SET ${fields.join(', ')} WHERE id = ?`, values);
+    return this.findById(id);
   }
 
   async search(options: QueryOptions): Promise<{ data: any[]; meta: PaginationMeta }> {
@@ -55,104 +51,34 @@ export class ProductRepository extends BaseRepository {
 
     const where: string[] = [];
     const params: any[] = [];
-    let paramIndex = 1;
 
     if (options.search) {
-      params.push(`%${options.search}%`);
-      where.push(`(
-        p.name ILIKE $${paramIndex} OR
-        p.description ILIKE $${paramIndex} OR
-        c.name ILIKE $${paramIndex} OR
-        c.applications ILIKE $${paramIndex} OR
-        c.characteristics ILIKE $${paramIndex} OR
-        c.description ILIKE $${paramIndex}
-      )`);
-      paramIndex++;
+      const s = `%${options.search}%`;
+      where.push(`(p.name LIKE ? OR p.description LIKE ? OR c.name LIKE ? OR c.applications LIKE ? OR c.characteristics LIKE ? OR c.description LIKE ?)`);
+      params.push(s, s, s, s, s, s);
     }
-
-    if (options.application) {
-      params.push(`%${options.application}%`);
-      where.push(`c.applications ILIKE $${paramIndex}`);
-      paramIndex++;
-    }
-
-    if (options.technology) {
-      params.push(`%${options.technology}%`);
-      where.push(`c.technology ILIKE $${paramIndex}`);
-      paramIndex++;
-    }
-
-    if (options.plate_type) {
-      params.push(`%${options.plate_type}%`);
-      where.push(`c.plate_type ILIKE $${paramIndex}`);
-      paramIndex++;
-    }
-
-    if (options.eurobat !== undefined) {
-      params.push(options.eurobat);
-      where.push(`c.eurobat = $${paramIndex}`);
-      paramIndex++;
-    }
-
-    if (options.capacity_range) {
-      params.push(`%${options.capacity_range}%`);
-      where.push(`c.capacity_range ILIKE $${paramIndex}`);
-      paramIndex++;
-    }
-
-    if (options.characteristics) {
-      params.push(`%${options.characteristics}%`);
-      where.push(`c.characteristics ILIKE $${paramIndex}`);
-      paramIndex++;
-    }
-
-    if (options.product_type_id) {
-      params.push(options.product_type_id);
-      where.push(`p.product_type_id = $${paramIndex}`);
-      paramIndex++;
-    }
-
-    if (options.status) {
-      params.push(options.status);
-      where.push(`p.status = $${paramIndex}`);
-      paramIndex++;
-    }
-
-    if (options.category_id) {
-      params.push(options.category_id);
-      where.push(`pc.category_id = $${paramIndex}`);
-      paramIndex++;
-    }
-
-    if (options.capacity_min !== undefined) {
-      params.push(options.capacity_min);
-      where.push(`(pav.attributes_json->>'capacity_nominal_10h')::numeric >= $${paramIndex}`);
-      paramIndex++;
-    }
-
-    if (options.capacity_max !== undefined) {
-      params.push(options.capacity_max);
-      where.push(`(pav.attributes_json->>'capacity_nominal_10h')::numeric <= $${paramIndex}`);
-      paramIndex++;
-    }
-
-    if (options.voltage !== undefined) {
-      params.push(options.voltage);
-      where.push(`(pav.attributes_json->>'voltage')::numeric = $${paramIndex}`);
-      paramIndex++;
-    }
-
+    if (options.application) { where.push('c.applications LIKE ?'); params.push(`%${options.application}%`); }
+    if (options.technology) { where.push('c.technology LIKE ?'); params.push(`%${options.technology}%`); }
+    if (options.plate_type) { where.push('c.plate_type LIKE ?'); params.push(`%${options.plate_type}%`); }
+    if (options.eurobat !== undefined) { where.push('c.eurobat = ?'); params.push(options.eurobat); }
+    if (options.capacity_range) { where.push('c.capacity_range LIKE ?'); params.push(`%${options.capacity_range}%`); }
+    if (options.characteristics) { where.push('c.characteristics LIKE ?'); params.push(`%${options.characteristics}%`); }
+    if (options.product_type_id) { where.push('p.product_type_id = ?'); params.push(options.product_type_id); }
+    if (options.status) { where.push('p.status = ?'); params.push(options.status); }
+    if (options.category_id) { where.push('pc.category_id = ?'); params.push(options.category_id); }
+    if (options.capacity_min !== undefined) { where.push('CAST(JSON_UNQUOTE(JSON_EXTRACT(pav.attributes_json, "$.capacity")) AS DECIMAL) >= ?'); params.push(options.capacity_min); }
+    if (options.capacity_max !== undefined) { where.push('CAST(JSON_UNQUOTE(JSON_EXTRACT(pav.attributes_json, "$.capacity")) AS DECIMAL) <= ?'); params.push(options.capacity_max); }
+    if (options.voltage !== undefined) { where.push('CAST(JSON_UNQUOTE(JSON_EXTRACT(pav.attributes_json, "$.voltage")) AS DECIMAL) = ?'); params.push(options.voltage); }
     if (options.filters) {
       Object.entries(options.filters).forEach(([key, value]) => {
-        where.push(`pav.attributes_json->>'${key.replace(/'/g, "''")}' = $${paramIndex}`);
+        where.push(`JSON_UNQUOTE(JSON_EXTRACT(pav.attributes_json, '$.${key}')) = ?`);
         params.push(String(value));
-        paramIndex++;
       });
     }
 
     const whereClause = where.length > 0 ? `WHERE ${where.join(' AND ')}` : '';
 
-    const countResult = await this.db.one(
+    const [countRows] = await this.db.query(
       `SELECT COUNT(DISTINCT p.id) as total
        FROM products p
        LEFT JOIN product_attribute_values pav ON p.id = pav.product_id
@@ -161,96 +87,63 @@ export class ProductRepository extends BaseRepository {
        ${whereClause}`,
       params
     );
-    const total = parseInt(countResult.total, 10);
+    const total = parseInt((countRows as any[])[0].total, 10);
 
-    const data = await this.db.any(
-      `SELECT DISTINCT ON (p.id) p.*,
-         pav.attributes_json,
-         COALESCE(
-           (SELECT jsonb_agg(jsonb_build_object(
-             'id', c2.id, 'name', c2.name, 'slug', c2.slug,
-             'technology', c2.technology, 'plate_type', c2.plate_type,
-             'design_life_years', c2.design_life_years, 'cycles', c2.cycles,
-             'capacity_range', c2.capacity_range, 'applications', c2.applications,
-             'characteristics', c2.characteristics, 'eurobat', c2.eurobat,
-             'features', COALESCE(
-               (SELECT jsonb_agg(jsonb_build_object('id', cf.id, 'type', cf.type, 'label', cf.label, 'order', cf."order") ORDER BY cf."order")
-                FROM category_features cf WHERE cf.category_id = c2.id),
-               '[]'::jsonb
-             )
-           ))
-           FROM product_categories pc2
-           JOIN categories c2 ON pc2.category_id = c2.id
-           WHERE pc2.product_id = p.id), '[]'::jsonb
-         ) AS categories,
-         COALESCE(
-           (SELECT jsonb_agg(jsonb_build_object('id', m.id, 'type', m.type, 'url', m.url, 'order', m."order")
-                             ORDER BY m."order")
-            FROM media m
-            WHERE m.product_id = p.id), '[]'::jsonb
-         ) AS media
+    const [rows] = await this.db.query(
+      `SELECT p.*, pav.attributes_json
        FROM products p
        LEFT JOIN product_attribute_values pav ON p.id = pav.product_id
        LEFT JOIN product_categories pc ON p.id = pc.product_id
        LEFT JOIN categories c ON pc.category_id = c.id
        ${whereClause}
-       ORDER BY p.id, p.name ASC
-       LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`,
+       GROUP BY p.id
+       ORDER BY p.name ASC
+       LIMIT ? OFFSET ?`,
       [...params, perPage, offset]
     );
 
+    const products = rows as any[];
+    const data = await Promise.all(products.map((p) => this.attachRelations(p)));
+
     return {
       data,
-      meta: {
-        page,
-        per_page: perPage,
-        total,
-        total_pages: Math.ceil(total / perPage),
-      },
+      meta: { page, per_page: perPage, total, total_pages: Math.ceil(total / perPage) },
     };
   }
 
   async findFullProduct(id: string): Promise<any> {
-    return this.db.oneOrNone(
-      `SELECT
-         p.*,
-         pav.attributes_json,
-         COALESCE(
-           (SELECT jsonb_agg(
-             jsonb_build_object(
-               'id', c2.id, 'name', c2.name, 'slug', c2.slug,
-               'technology', c2.technology, 'plate_type', c2.plate_type,
-               'design_life_years', c2.design_life_years, 'cycles', c2.cycles,
-               'capacity_range', c2.capacity_range, 'applications', c2.applications,
-               'characteristics', c2.characteristics, 'eurobat', c2.eurobat,
-               'description', c2.description,
-               'features', COALESCE(
-                 (SELECT jsonb_agg(jsonb_build_object(
-                   'id', cf.id, 'type', cf.type, 'label', cf.label,
-                   'order', cf."order", 'suitability', cf.suitability
-                 ) ORDER BY cf."order")
-                  FROM category_features cf WHERE cf.category_id = c2.id),
-                 '[]'::jsonb
-               )
-             )
-           )
-            FROM product_categories pc2
-            JOIN categories c2 ON pc2.category_id = c2.id
-            WHERE pc2.product_id = p.id
-           ), '[]'::jsonb
-         ) AS categories,
-         COALESCE(
-           (SELECT jsonb_agg(jsonb_build_object(
-             'id', m.id, 'type', m.type, 'url', m.url, 'title', m.title, 'order', m."order"
-           ) ORDER BY m."order")
-            FROM media m WHERE m.product_id = p.id
-           ), '[]'::jsonb
-         ) AS media
+    const [rows] = await this.db.query(
+      `SELECT p.*, pav.attributes_json
        FROM products p
        LEFT JOIN product_attribute_values pav ON p.id = pav.product_id
-       WHERE p.id = $1
-       GROUP BY p.id, pav.id`,
+       WHERE p.id = ?`,
       [id]
     );
+    const row = (rows as any[])[0];
+    if (!row) return null;
+    return this.attachRelations(row);
+  }
+
+  private async attachRelations(row: any): Promise<any> {
+    if (typeof row.attributes_json === 'string') row.attributes_json = JSON.parse(row.attributes_json);
+    if (!row.attributes_json) row.attributes_json = {};
+
+    const [cats] = await this.db.query(
+      `SELECT c.id, c.name, c.slug, c.technology, c.plate_type, c.design_life_years,
+              c.cycles, c.capacity_range, c.applications, c.characteristics, c.eurobat, c.description
+       FROM categories c
+       JOIN product_categories pc ON c.id = pc.category_id
+       WHERE pc.product_id = ?`,
+      [row.id]
+    );
+    row.categories = cats || [];
+
+    const [media] = await this.db.query(
+      'SELECT id, type, url, title, `order` FROM media WHERE product_id = ? ORDER BY `order` ASC',
+      [row.id]
+    );
+    row.media = media || [];
+
+    return row;
   }
 }

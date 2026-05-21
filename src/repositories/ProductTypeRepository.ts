@@ -1,46 +1,41 @@
-import { IDatabase } from 'pg-promise';
+import { DbPool } from '../database/connection';
 import { BaseRepository } from './BaseRepository';
 import { ProductType, ProductTypeAttribute } from '../types';
+import { v4 as uuidv4 } from 'uuid';
 
 export class ProductTypeRepository extends BaseRepository {
-  constructor(db: IDatabase<any>) {
+  constructor(db: DbPool) {
     super(db, 'product_types');
   }
 
   async create(data: Omit<ProductType, 'id' | 'created_at' | 'updated_at'>): Promise<ProductType> {
-    return this.db.one(
-      `INSERT INTO product_types (name, description)
-       VALUES ($1, $2)
-       RETURNING *`,
-      [data.name, data.description]
+    const id = uuidv4();
+    await this.db.query(
+      `INSERT INTO product_types (id, name, description) VALUES (?, ?, ?)`,
+      [id, data.name, data.description]
     );
+    return this.findById(id);
   }
 
   async findByName(name: string): Promise<ProductType | null> {
-    return this.db.oneOrNone('SELECT * FROM product_types WHERE name = $1', [name]);
+    const [rows] = await this.db.query('SELECT * FROM product_types WHERE name = ?', [name]);
+    return (rows as any[])[0] || null;
   }
 
   async getWithAttributes(id: string): Promise<any> {
-    return this.db.one(
-      `SELECT
-         pt.*,
-         jsonb_agg(jsonb_build_object(
-           'id', a.id,
-           'name', a.name,
-           'label', a.label,
-           'data_type', a.data_type,
-           'unit', a.unit,
-           'is_filterable', a.is_filterable,
-           'is_required', pta.is_required,
-           'order', pta."order"
-         ) ORDER BY pta."order" ASC) as attributes
-       FROM product_types pt
-       LEFT JOIN product_type_attributes pta ON pt.id = pta.product_type_id
-       LEFT JOIN attributes a ON pta.attribute_id = a.id
-       WHERE pt.id = $1
-       GROUP BY pt.id`,
+    const pt = await this.findById(id);
+    if (!pt) return null;
+
+    const [rows] = await this.db.query(
+      `SELECT a.*, pta.is_required, pta.\`order\`
+       FROM attributes a
+       JOIN product_type_attributes pta ON a.id = pta.attribute_id
+       WHERE pta.product_type_id = ?
+       ORDER BY pta.\`order\` ASC`,
       [id]
     );
+    pt.attributes = rows;
+    return pt;
   }
 
   async assignAttribute(
@@ -49,19 +44,20 @@ export class ProductTypeRepository extends BaseRepository {
     isRequired: boolean,
     order: number
   ): Promise<ProductTypeAttribute> {
-    return this.db.one(
-      `INSERT INTO product_type_attributes (product_type_id, attribute_id, is_required, "order")
-       VALUES ($1, $2, $3, $4)
-       RETURNING *`,
-      [productTypeId, attributeId, isRequired, order]
+    const id = uuidv4();
+    await this.db.query(
+      `INSERT INTO product_type_attributes (id, product_type_id, attribute_id, is_required, \`order\`) VALUES (?, ?, ?, ?, ?)`,
+      [id, productTypeId, attributeId, isRequired, order]
     );
+    const [rows] = await this.db.query('SELECT * FROM product_type_attributes WHERE id = ?', [id]);
+    return (rows as any[])[0];
   }
 
   async removeAttribute(productTypeId: string, attributeId: string): Promise<boolean> {
-    const result = await this.db.result(
-      `DELETE FROM product_type_attributes WHERE product_type_id = $1 AND attribute_id = $2`,
+    const [result] = await this.db.query(
+      `DELETE FROM product_type_attributes WHERE product_type_id = ? AND attribute_id = ?`,
       [productTypeId, attributeId]
     );
-    return result.rowCount > 0;
+    return (result as any).affectedRows > 0;
   }
 }
