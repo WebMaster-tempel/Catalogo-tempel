@@ -1,6 +1,7 @@
+import { DbPool } from '../database/connection';
 import { CategoryRepository } from '../repositories/CategoryRepository';
 import { Category } from '../types';
-import { DbPool } from '../database/connection';
+
 
 export class CategoryService {
   private categoryRepo: CategoryRepository;

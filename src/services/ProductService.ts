@@ -3,8 +3,8 @@ import { ProductAttributeValuesRepository } from '../repositories/ProductAttribu
 import { ProductTypeRepository } from '../repositories/ProductTypeRepository';
 import { MediaRepository } from '../repositories/MediaRepository';
 import { CategoryRepository } from '../repositories/CategoryRepository';
-import { Product, QueryOptions, Attribute } from '../types';
 import { DbPool } from '../database/connection';
+import { Product, QueryOptions, Attribute } from '../types';
 
 export class ProductService {
   private productRepo: ProductRepository;
@@ -12,13 +12,15 @@ export class ProductService {
   private productTypeRepo: ProductTypeRepository;
   private mediaRepo: MediaRepository;
   private categoryRepo: CategoryRepository;
+  private db: DbPool;
 
   constructor(db: DbPool) {
-    this.productRepo = new ProductRepository(db);
+    this.db = db;
+    this.productRepo      = new ProductRepository(db);
     this.attributeValuesRepo = new ProductAttributeValuesRepository(db);
-    this.productTypeRepo = new ProductTypeRepository(db);
-    this.mediaRepo = new MediaRepository(db);
-    this.categoryRepo = new CategoryRepository(db);
+    this.productTypeRepo  = new ProductTypeRepository(db);
+    this.mediaRepo        = new MediaRepository(db);
+    this.categoryRepo     = new CategoryRepository(db);
   }
 
   async createProduct(
@@ -27,16 +29,26 @@ export class ProductService {
       category_ids?: string[];
     }
   ): Promise<any> {
-    const { attributes, category_ids, ...productData } = data;
-    await this.validateProductAttributes(data.product_type_id, attributes);
-    const product = await this.productRepo.create(productData);
-    await this.attributeValuesRepo.create(product.id, attributes);
-    if (category_ids && category_ids.length > 0) {
-      for (const categoryId of category_ids) {
-        await this.categoryRepo.assignProduct(product.id, categoryId);
+    const conn = await this.db.getConnection();
+    try {
+      await conn.beginTransaction();
+      const { attributes, category_ids, ...productData } = data;
+      await this.validateProductAttributes(data.product_type_id, attributes);
+      const product = await this.productRepo.create(productData);
+      await this.attributeValuesRepo.create(product.id, attributes);
+      if (category_ids && category_ids.length > 0) {
+        for (const categoryId of category_ids) {
+          await this.categoryRepo.assignProduct(product.id, categoryId);
+        }
       }
+      await conn.commit();
+      return this.productRepo.findFullProduct(product.id);
+    } catch (err) {
+      await conn.rollback();
+      throw err;
+    } finally {
+      conn.release();
     }
-    return this.productRepo.findFullProduct(product.id);
   }
 
   async updateProduct(
@@ -46,23 +58,42 @@ export class ProductService {
       category_ids?: string[];
     }
   ): Promise<any> {
-    const { attributes, category_ids, ...productData } = data;
-    if (attributes) {
-      const product = await this.productRepo.findById(id);
-      if (product) await this.validateProductAttributes(product.product_type_id, attributes);
-    }
-    await this.productRepo.update(id, productData);
-    if (attributes) await this.attributeValuesRepo.upsert(id, attributes);
-    if (category_ids !== undefined) {
-      const existingCategories = await this.categoryRepo.getProductCategories(id);
-      for (const category of existingCategories) {
-        await this.categoryRepo.removeProduct(id, category.id);
+    const conn = await this.db.getConnection();
+    try {
+      await conn.beginTransaction();
+      const { attributes, category_ids, ...productData } = data;
+
+      if (attributes) {
+        const product = await this.productRepo.findById(id);
+        if (product) {
+          await this.validateProductAttributes(product.product_type_id, attributes);
+        }
       }
-      for (const categoryId of category_ids) {
-        await this.categoryRepo.assignProduct(id, categoryId);
+
+      await this.productRepo.update(id, productData);
+
+      if (attributes) {
+        await this.attributeValuesRepo.upsert(id, attributes);
       }
+
+      if (category_ids !== undefined) {
+        const existingCategories = await this.categoryRepo.getProductCategories(id);
+        for (const category of existingCategories) {
+          await this.categoryRepo.removeProduct(id, category.id);
+        }
+        for (const categoryId of category_ids) {
+          await this.categoryRepo.assignProduct(id, categoryId);
+        }
+      }
+
+      await conn.commit();
+      return this.productRepo.findFullProduct(id);
+    } catch (err) {
+      await conn.rollback();
+      throw err;
+    } finally {
+      conn.release();
     }
-    return this.productRepo.findFullProduct(id);
   }
 
   async getProduct(id: string): Promise<any> {
@@ -88,11 +119,13 @@ export class ProductService {
     for (const attr of productType.attributes) {
       attributeMap.set(attr.name, attr);
     }
+
     for (const [name, attr] of attributeMap.entries()) {
       if (attr.is_required && !(name in attributes)) {
         throw new Error(`Required attribute missing: ${attr.label}`);
       }
     }
+
     for (const [name, value] of Object.entries(attributes)) {
       const attr = attributeMap.get(name);
       if (attr) this.validateAttributeValue(attr, value);
@@ -102,10 +135,19 @@ export class ProductService {
   private validateAttributeValue(attr: Attribute & { is_required?: boolean }, value: any): void {
     if (value === null || value === undefined) return;
     switch (attr.data_type) {
-      case 'number': if (typeof value !== 'number') throw new Error(`${attr.label} must be a number`); break;
-      case 'boolean': if (typeof value !== 'boolean') throw new Error(`${attr.label} must be a boolean`); break;
-      case 'date': if (!(value instanceof Date) && typeof value !== 'string') throw new Error(`${attr.label} must be a date`); break;
-      case 'string': if (typeof value !== 'string') throw new Error(`${attr.label} must be a string`); break;
+      case 'number':
+        if (typeof value !== 'number') throw new Error(`${attr.label} must be a number`);
+        break;
+      case 'boolean':
+        if (typeof value !== 'boolean') throw new Error(`${attr.label} must be a boolean`);
+        break;
+      case 'date':
+        if (!(value instanceof Date) && typeof value !== 'string')
+          throw new Error(`${attr.label} must be a date`);
+        break;
+      case 'string':
+        if (typeof value !== 'string') throw new Error(`${attr.label} must be a string`);
+        break;
     }
   }
 

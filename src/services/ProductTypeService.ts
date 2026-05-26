@@ -1,6 +1,7 @@
+import { DbPool } from '../database/connection';
 import { ProductTypeRepository } from '../repositories/ProductTypeRepository';
 import { ProductType } from '../types';
-import { DbPool } from '../database/connection';
+
 
 export class ProductTypeService {
   private productTypeRepo: ProductTypeRepository;

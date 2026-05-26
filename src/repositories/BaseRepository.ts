@@ -1,3 +1,4 @@
+import { ResultSetHeader } from 'mysql2';
 import { DbPool } from '../database/connection';
 
 export class BaseRepository {
@@ -10,17 +11,23 @@ export class BaseRepository {
   }
 
   async findById(id: string): Promise<any> {
-    const [rows] = await this.db.query(`SELECT * FROM ${this.table} WHERE id = ?`, [id]);
-    return (rows as any[])[0] || null;
+    const [rows] = await this.db.execute(
+      `SELECT * FROM \`${this.table}\` WHERE id = ?`,
+      [id]
+    );
+    return (rows as any[])[0] ?? null;
   }
 
   async findAll(): Promise<any[]> {
-    const [rows] = await this.db.query(`SELECT * FROM ${this.table}`);
+    const [rows] = await this.db.execute(`SELECT * FROM \`${this.table}\``);
     return rows as any[];
   }
 
   async delete(id: string): Promise<boolean> {
-    const [result] = await this.db.query(`DELETE FROM ${this.table} WHERE id = ?`, [id]);
-    return (result as any).affectedRows > 0;
+    const [result] = await this.db.execute(
+      `DELETE FROM \`${this.table}\` WHERE id = ?`,
+      [id]
+    );
+    return (result as ResultSetHeader).affectedRows > 0;
   }
 }

@@ -1,4 +1,5 @@
 import { DbPool } from '../database/connection';
+
 import { CategoryFeatureRepository } from '../repositories/CategoryFeatureRepository';
 import { CategoryFeature } from '../types';
 
@@ -17,12 +18,7 @@ export class CategoryFeatureService {
     return this.repo.findByType(categoryId, type);
   }
 
-  async createFeature(categoryId: string, type: string, label: string, order?: number): Promise<CategoryFeature> {
-    const validTypes: Array<'application' | 'characteristic'> = ['application', 'characteristic'];
-    const validType = validTypes.includes(type as 'application' | 'characteristic')
-      ? (type as 'application' | 'characteristic')
-      : 'application';
-
+  async createFeature(categoryId: string, type: 'application' | 'characteristic', label: string, order?: number): Promise<CategoryFeature> {
     const features = await this.repo.findByCategoryId(categoryId);
     const maxOrder = features.filter((f) => f.type === validType).length;
 
