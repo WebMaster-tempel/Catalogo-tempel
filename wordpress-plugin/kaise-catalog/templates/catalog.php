@@ -209,11 +209,11 @@
                 <button class="kc-volt-pill" data-v="6">6 V</button>
                 <button class="kc-volt-pill" data-v="8">8 V</button>
                 <button class="kc-volt-pill" data-v="12">12 V</button>
-                <button class="kc-volt-pill" data-v="12.8">12.8 V<small>Litio</small></button>
+                <button class="kc-volt-pill" data-v="12.8">12.8 V<small>LFP</small></button>
                 <button class="kc-volt-pill" data-v="24">24 V</button>
-                <button class="kc-volt-pill" data-v="25.6">25.6 V<small>Litio</small></button>
+                <button class="kc-volt-pill" data-v="25.6">25.6 V<small>LFP</small></button>
                 <button class="kc-volt-pill" data-v="48">48 V</button>
-                <button class="kc-volt-pill" data-v="51.2">51.2 V<small>Litio</small></button>
+                <button class="kc-volt-pill" data-v="51.2">51.2 V<small>LFP</small></button>
             </div>
         </div>
 
@@ -344,7 +344,7 @@
                     <option value="">Cualquiera</option>
                     <option value="VRLA-AGM">VRLA-AGM</option>
                     <option value="VRLA-GEL">VRLA-GEL</option>
-                    <option value="LiFePO4">LiFePO4 (Litio)</option>
+                    <option value="LiFePO4">LiFePO4 (Litio Ferrofosfato)</option>
                     <option value="Lead Carbon">Lead Carbon</option>
                 </select>
             </div>
@@ -356,11 +356,11 @@
                     <option value="2">2 V</option>
                     <option value="6">6 V</option>
                     <option value="12">12 V</option>
-                    <option value="12.8">12.8 V (Litio)</option>
+                    <option value="12.8">12.8 V (LFP)</option>
                     <option value="24">24 V</option>
-                    <option value="25.6">25.6 V (Litio)</option>
+                    <option value="25.6">25.6 V (LFP)</option>
                     <option value="48">48 V</option>
-                    <option value="51.2">51.2 V (Litio)</option>
+                    <option value="51.2">51.2 V (LFP)</option>
                 </select>
             </div>
 
@@ -368,7 +368,7 @@
                 <label class="kc-filter-label" for="kc-plate-type">Tipo de placa</label>
                 <select id="kc-plate-type" class="kc-filter-input">
                     <option value="">Cualquiera</option>
-                    <option value="Flat">Flat</option>
+                    <option value="Plana">Plana</option>
                     <option value="Tubular">Tubular</option>
                     <option value="Prismática">Prismática</option>
                 </select>

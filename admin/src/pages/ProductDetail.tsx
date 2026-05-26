@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { productsApi, productTypesApi } from '../services/api';
 import { Product, ProductType, Category } from '../types';
 import ConfirmDialog from '../components/ConfirmDialog';
+import { useAuth } from '../context/AuthContext';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -119,6 +120,7 @@ function GammaBlock({ cat }: { cat: Category }) {
 // ── main component ────────────────────────────────────────────────────────────
 
 export default function ProductDetail() {
+  const { isAuthenticated } = useAuth();
   const { id }   = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [product, setProduct]         = useState<Product | null>(null);
@@ -188,20 +190,22 @@ export default function ProductDetail() {
               <p className="text-white/65 text-[13px] mt-1.5 leading-relaxed max-w-2xl">{product.description}</p>
             )}
           </div>
-          <div className="flex flex-col gap-2 flex-shrink-0">
-            <Link
-              to={`/products/${id}/edit`}
-              className="inline-flex items-center gap-2 bg-white text-indigo-700 font-semibold text-[13px] px-4 py-2 rounded-lg hover:bg-indigo-50 transition-colors no-underline"
-            >
-              ✏️ Editar
-            </Link>
-            <button
-              onClick={() => setShowDelete(true)}
-              className="inline-flex items-center gap-2 bg-white/10 border border-white/20 text-white/80 hover:bg-red-500 hover:text-white font-semibold text-[13px] px-4 py-2 rounded-lg transition-colors"
-            >
-              🗑️ Eliminar
-            </button>
-          </div>
+          {isAuthenticated && (
+            <div className="flex flex-col gap-2 flex-shrink-0">
+              <Link
+                to={`/products/${id}/edit`}
+                className="inline-flex items-center gap-2 bg-white text-indigo-700 font-semibold text-[13px] px-4 py-2 rounded-lg hover:bg-indigo-50 transition-colors no-underline"
+              >
+                ✏️ Editar
+              </Link>
+              <button
+                onClick={() => setShowDelete(true)}
+                className="inline-flex items-center gap-2 bg-white/10 border border-white/20 text-white/80 hover:bg-red-500 hover:text-white font-semibold text-[13px] px-4 py-2 rounded-lg transition-colors"
+              >
+                🗑️ Eliminar
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

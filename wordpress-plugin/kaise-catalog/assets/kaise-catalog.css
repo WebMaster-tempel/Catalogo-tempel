@@ -1,13 +1,13 @@
 /* ── Kaise Catalog Plugin ── */
 
 .kc-wrap {
-    --kc-primary:    #e63329;
-    --kc-primary-d:  #c0271e;
+    --kc-primary:    #30898D;
+    --kc-primary-d:  #266f73;
     --kc-bg:         #f9f9f9;
     --kc-card-bg:    #ffffff;
     --kc-border:     #e2e2e2;
-    --kc-text:       #1a1a1a;
-    --kc-muted:      #6b7280;
+    --kc-text:       #333333;
+    --kc-muted:      #5D5C5D;
     --kc-radius:     8px;
     --kc-shadow:     0 1px 3px rgba(0,0,0,.08), 0 4px 12px rgba(0,0,0,.06);
     font-family: inherit;
@@ -140,13 +140,13 @@
 
 .kc-app-tile:hover {
     border-color: var(--kc-primary);
-    background: #fff1f0;
+    background: #f0fafa;
     transform: translateY(-2px);
 }
 
 .kc-app-tile.is-active {
     border-color: var(--kc-primary);
-    background: #fee2e2;
+    background: #d8f0f1;
 }
 
 .kc-app-tile-all {
@@ -236,7 +236,7 @@
 .kc-volt-pill.is-active,
 .kc-tech-pill.is-active {
     border-color: var(--kc-primary);
-    background: #fee2e2;
+    background: #d8f0f1;
     color: var(--kc-primary);
 }
 
@@ -292,7 +292,7 @@
 .kc-cap-btn:hover,
 .kc-cap-btn.is-active {
     border-color: var(--kc-primary);
-    background: #fee2e2;
+    background: #d8f0f1;
     color: var(--kc-primary);
 }
 
@@ -367,7 +367,7 @@
 .kc-wp-dot.is-active {
     border-color: var(--kc-primary);
     background: #fff;
-    box-shadow: 0 0 0 3px #fee2e2;
+    box-shadow: 0 0 0 3px #d8f0f1;
 }
 
 .kc-wp-line {
@@ -406,12 +406,12 @@
 
 .kc-char-pill:hover {
     border-color: var(--kc-primary);
-    background: #fff1f0;
+    background: #f0fafa;
 }
 
 .kc-char-pill.is-active {
     border-color: var(--kc-primary);
-    background: #fee2e2;
+    background: #d8f0f1;
 }
 
 .kc-char-icon {
@@ -478,13 +478,13 @@
 
 .kc-gamma-card:hover {
     border-color: var(--kc-primary);
-    background: #fff1f0;
+    background: #f0fafa;
     transform: translateY(-2px);
 }
 
 .kc-gamma-card.is-active {
     border-color: var(--kc-primary);
-    background: #fee2e2;
+    background: #d8f0f1;
 }
 
 .kc-gamma-card-any {
@@ -532,12 +532,12 @@
     display: inline-flex;
     align-items: center;
     gap: .35rem;
-    background: #fee2e2;
-    border: 1px solid #fecaca;
+    background: #d8f0f1;
+    border: 1px solid #9dd4d7;
     border-radius: 20px;
     padding: .25rem .65rem .25rem .75rem;
     font-size: .82rem;
-    color: #7f1d1d;
+    color: #1a5c5f;
 }
 
 .kc-chip strong {
@@ -549,7 +549,7 @@
     border: none;
     cursor: pointer;
     font-size: .75rem;
-    color: #7f1d1d;
+    color: #1a5c5f;
     padding: 0 .1rem;
     line-height: 1;
     opacity: .7;
@@ -596,14 +596,14 @@
 
 .kc-ai-example:hover {
     border-color: var(--kc-primary);
-    background: #fff1f0;
+    background: #f0fafa;
 }
 
 /* ── AI Search ─────────────────────────────────────────── */
 
 .kc-ai-search {
-    background: linear-gradient(135deg, #fff1f0 0%, #fff 60%);
-    border: 1px solid #fecaca;
+    background: linear-gradient(135deg, #f0fafa 0%, #fff 60%);
+    border: 1px solid #9dd4d7;
     border-radius: var(--kc-radius);
     padding: 1.25rem 1.5rem;
     margin-bottom: 1.25rem;
@@ -649,7 +649,7 @@
 
 .kc-ai-input:focus {
     border-color: var(--kc-primary);
-    box-shadow: 0 0 0 3px rgba(230,51,41,.12);
+    box-shadow: 0 0 0 3px rgba(48,137,141,.12);
 }
 
 .kc-ai-interpretation {
@@ -813,7 +813,7 @@
 .kc-filter-group input:focus,
 .kc-filter-group select:focus {
     border-color: var(--kc-primary);
-    box-shadow: 0 0 0 3px rgba(230,51,41,.1);
+    box-shadow: 0 0 0 3px rgba(48,137,141,.1);
 }
 
 /* ── Status ─────────────────────────────────────────────── */
@@ -833,7 +833,7 @@
 
 .kc-status.is-error {
     background: #fef2f2;
-    border: 1px solid #fecaca;
+    border: 1px solid #9dd4d7;
     color: #991b1b;
 }
 
@@ -1050,7 +1050,7 @@
 }
 
 .kc-modal-close:hover {
-    background: #fee2e2;
+    background: #d8f0f1;
     border-color: var(--kc-primary);
 }
 
@@ -1126,7 +1126,7 @@
 }
 
 .kc-detail-media a:hover {
-    background: #fee2e2;
+    background: #d8f0f1;
 }
 
 /* ── Eurobat badge ──────────────────────────────────────── */
@@ -1329,7 +1329,7 @@
 }
 
 .kc-video-card:hover .kc-video-play {
-    background: rgba(230,51,41,.7);
+    background: rgba(48,137,141,.7);
 }
 
 .kc-video-badge {
@@ -1376,7 +1376,7 @@
 .kc-error-msg {
     color: #991b1b;
     background: #fef2f2;
-    border: 1px solid #fecaca;
+    border: 1px solid #9dd4d7;
     border-radius: 6px;
     padding: .5rem .75rem;
 }
@@ -1437,7 +1437,7 @@ select option:disabled {
 
 .kc-gamma-counter.is-zero {
     background: #fef2f2;
-    border-color: #fecaca;
+    border-color: #9dd4d7;
     color: #991b1b;
 }
 
@@ -1484,7 +1484,7 @@ select option:disabled {
 
 .kc-modal-navbtn:hover:not(:disabled) {
     border-color: var(--kc-primary);
-    background: #fee2e2;
+    background: #d8f0f1;
     color: var(--kc-primary);
 }
 
@@ -1597,7 +1597,7 @@ select option:disabled {
 
 .kc-filter-input:focus {
     border-color: var(--kc-primary);
-    box-shadow: 0 0 0 3px rgba(230,51,41,.1);
+    box-shadow: 0 0 0 3px rgba(48,137,141,.1);
 }
 
 .kc-filter-check-label {
@@ -1637,7 +1637,7 @@ select option:disabled {
 .kc-gamma-counter.is-zero {
     color: #dc2626;
     background: #fef2f2;
-    border-color: #fecaca;
+    border-color: #9dd4d7;
 }
 
 .kc-gc-icon {

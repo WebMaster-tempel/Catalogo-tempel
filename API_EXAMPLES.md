@@ -95,7 +95,7 @@ curl "http://localhost:3000/api/v1/products?search=KBSG&status=published&categor
 | **Filtros de categoría** | | | |
 | `application` | string | — | Keyword en `categories.applications` (ILIKE) — ej: `Telecomunicaciones` |
 | `technology` | string | — | Tecnología de la categoría (ILIKE) — ej: `VRLA-AGM`, `LiFePO4`, `VRLA-GEL` |
-| `plate_type` | string | — | Tipo de placa (ILIKE) — ej: `Tubular`, `Flat`, `Prismática` |
+| `plate_type` | string | — | Tipo de placa (ILIKE) — ej: `Tubular`, `Plana`, `Prismática` |
 | `eurobat` | boolean | — | Solo gammas certificadas Eurobat (`true`/`false`) |
 | `capacity_range` | string | — | Keyword en rango de capacidad textual de la categoría — ej: `3000`, `C10` |
 | `characteristics` | string | — | Keyword en características técnicas de la categoría — ej: `-40°C`, `gel puro`, `PSoC` |
@@ -380,7 +380,7 @@ curl "http://localhost:3000/api/v1/categories/a13c1e00-1000-4000-8000-0000000000
     "slug": "kaise-solar-gel",
     "parent_id": "a15c1e00-1000-4000-8000-000000000009",
     "technology": "VRLA-GEL",
-    "plate_type": "Flat",
+    "plate_type": "Plana",
     "design_life_years": "10-12 años",
     "cycles": "≈1200",
     "capacity_range": "80 – 250 Ah (C100)",

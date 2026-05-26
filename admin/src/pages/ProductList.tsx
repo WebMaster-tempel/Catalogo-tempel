@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { productsApi, categoriesApi, productTypesApi } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import { Product, Category, ProductType, PaginationMeta } from '../types';
 import Pagination from '../components/Pagination';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -55,6 +56,7 @@ function FilterRow({ title, icon, children }: { title: string; icon: string; chi
 // ── component ─────────────────────────────────────────────────────────────────
 
 export default function ProductList() {
+  const { isAuthenticated } = useAuth();
   // Pagination / view
   const [products, setProducts]         = useState<Product[]>([]);
   const [viewMode, setViewMode]         = useState<'list' | 'grid'>('grid');
@@ -161,7 +163,7 @@ export default function ProductList() {
             {meta.total} producto{meta.total !== 1 ? 's' : ''} encontrado{meta.total !== 1 ? 's' : ''}
           </p>
         </div>
-        <Link to="/products/new" className="btn btn-primary">+ Nuevo producto</Link>
+        {isAuthenticated && <Link to="/products/new" className="btn btn-primary">+ Nuevo producto</Link>}
       </div>
 
       {/* ── Filter panel ── */}
@@ -396,8 +398,8 @@ export default function ProductList() {
                       <td>
                         <div className="actions">
                           <Link to={`/products/${p.id}`} className="btn btn-sm">Ver</Link>
-                          <Link to={`/products/${p.id}/edit`} className="btn btn-sm btn-secondary">Editar</Link>
-                          <button className="btn btn-sm btn-danger" onClick={() => setDeleteId(p.id)}>Eliminar</button>
+                          {isAuthenticated && <Link to={`/products/${p.id}/edit`} className="btn btn-sm btn-secondary">Editar</Link>}
+                          {isAuthenticated && <button className="btn btn-sm btn-danger" onClick={() => setDeleteId(p.id)}>Eliminar</button>}
                         </div>
                       </td>
                     </tr>
@@ -465,14 +467,18 @@ export default function ProductList() {
                           className="flex-1 text-center text-[12px] font-semibold py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 no-underline transition-colors">
                           Ver
                         </Link>
-                        <Link to={`/products/${p.id}/edit`}
-                          className="flex-1 text-center text-[12px] font-semibold py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 no-underline transition-colors">
-                          Editar
-                        </Link>
-                        <button onClick={() => setDeleteId(p.id)}
-                          className="px-2.5 py-1.5 rounded-lg border border-red-200 text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors text-[12px]">
-                          ✕
-                        </button>
+                        {isAuthenticated && (
+                          <Link to={`/products/${p.id}/edit`}
+                            className="flex-1 text-center text-[12px] font-semibold py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 no-underline transition-colors">
+                            Editar
+                          </Link>
+                        )}
+                        {isAuthenticated && (
+                          <button onClick={() => setDeleteId(p.id)}
+                            className="px-2.5 py-1.5 rounded-lg border border-red-200 text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors text-[12px]">
+                            ✕
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>

@@ -20,7 +20,7 @@ BEGIN;
 -- ─────────────────────────────────────────────────────────────────────────────
 
 ALTER TABLE category_features
-    ADD COLUMN IF NOT EXISTS suitability VARCHAR(20) DEFAULT NULL;
+    ADD COLUMN suitability VARCHAR(20) DEFAULT NULL;
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 2. COMPATIBILITY MATRIX

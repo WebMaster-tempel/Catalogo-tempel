@@ -11,21 +11,21 @@
 
     KC.GAMMA_DATA = [
         { id: 'litio',             technology: 'LiFePO4',  plate: 'Prismática' },
-        { id: 'standard',          technology: 'VRLA-AGM', plate: 'Flat' },
-        { id: 'long-life',         technology: 'VRLA-AGM', plate: 'Flat' },
-        { id: 'ultra-long-life',   technology: 'VRLA-AGM', plate: 'Flat' },
-        { id: 'high-rate',         technology: 'VRLA-AGM', plate: 'Flat' },
-        { id: 'solar-agm',         technology: 'VRLA-AGM', plate: 'Flat' },
-        { id: 'deep-cycle',        technology: 'VRLA-AGM', plate: 'Flat' },
-        { id: 'frontal-terminal',  technology: 'VRLA-AGM', plate: 'Flat' },
-        { id: 'high-temperature',  technology: 'VRLA-AGM', plate: 'Flat' },
-        { id: 'lead-carbon',       technology: 'VRLA-AGM', plate: 'Flat', isLeadCarbon: true },
-        { id: 'wind-power',        technology: 'VRLA-AGM', plate: 'Flat' },
-        { id: 'solar-gel',         technology: 'VRLA-GEL', plate: 'Flat' },
-        { id: 'deep-cycle-gel',    technology: 'VRLA-GEL', plate: 'Flat' },
+        { id: 'standard',          technology: 'VRLA-AGM', plate: 'Plana' },
+        { id: 'long-life',         technology: 'VRLA-AGM', plate: 'Plana' },
+        { id: 'ultra-long-life',   technology: 'VRLA-AGM', plate: 'Plana' },
+        { id: 'high-rate',         technology: 'VRLA-AGM', plate: 'Plana' },
+        { id: 'solar-agm',         technology: 'VRLA-AGM', plate: 'Plana' },
+        { id: 'deep-cycle',        technology: 'VRLA-AGM', plate: 'Plana' },
+        { id: 'frontal-terminal',  technology: 'VRLA-AGM', plate: 'Plana' },
+        { id: 'high-temperature',  technology: 'VRLA-AGM', plate: 'Plana' },
+        { id: 'lead-carbon',       technology: 'VRLA-AGM', plate: 'Plana', isLeadCarbon: true },
+        { id: 'wind-power',        technology: 'VRLA-AGM', plate: 'Plana' },
+        { id: 'solar-gel',         technology: 'VRLA-GEL', plate: 'Plana' },
+        { id: 'deep-cycle-gel',    technology: 'VRLA-GEL', plate: 'Plana' },
         { id: 'opzv',              technology: 'VRLA-GEL', plate: 'Tubular' },
-        { id: 'electric-vehicle',  technology: 'VRLA-AGM', plate: 'Flat' },
-        { id: 'traccion',          technology: 'VRLA-AGM', plate: 'Flat' },
+        { id: 'electric-vehicle',  technology: 'VRLA-AGM', plate: 'Plana' },
+        { id: 'traccion',          technology: 'VRLA-AGM', plate: 'Plana' },
     ];
 
     // ── Application compatibility matrix ──────────────────────────────────────
@@ -201,9 +201,31 @@
     KC.TECH_DISPLAY = {
         'VRLA-AGM':    'AGM (VRLA-AGM)',
         'VRLA-GEL':    'GEL (VRLA-GEL)',
-        'LiFePO4':     'Litio (LiFePO4)',
+        'LiFePO4':     'LiFePO4 (Litio Ferrofosfato)',
         'Lead Carbon': 'Lead Carbon (C+Pb)',
     };
+
+    // ── Hardcoded category IDs (fallback when API unreachable) ────────────────
+    // UUIDs match the database migrations exactly.
+
+    KC.GAMMA_CATEGORIES = [
+        { id: 'a11c1e00-1000-4000-8000-000000000001', name: 'KAISE LITIO',                       slug: 'kaise-litio' },
+        { id: 'a11c1e00-1000-4000-8000-000000000002', name: 'KAISE STANDARD',                    slug: 'kaise-standard' },
+        { id: 'a11c1e00-1000-4000-8000-000000000003', name: 'KAISE LONG LIFE',                   slug: 'kaise-long-life' },
+        { id: 'a11c1e00-1000-4000-8000-000000000004', name: 'KAISE ULTRA LONG LIFE',             slug: 'kaise-ultra-long-life' },
+        { id: 'a11c1e00-1000-4000-8000-000000000005', name: 'KAISE HIGH RATE',                   slug: 'kaise-high-rate' },
+        { id: 'a11c1e00-1000-4000-8000-000000000006', name: 'KAISE SOLAR AGM',                   slug: 'kaise-solar-agm' },
+        { id: 'a11c1e00-1000-4000-8000-000000000007', name: 'KAISE DEEP CYCLE AGM',              slug: 'kaise-deep-cycle' },
+        { id: 'a11c1e00-1000-4000-8000-000000000008', name: 'KAISE FRONT TERMINAL',              slug: 'kaise-front-terminal' },
+        { id: 'a11c1e00-1000-4000-8000-000000000009', name: 'KAISE HIGH TEMPERATURE',            slug: 'kaise-high-temperature' },
+        { id: 'a13c1e00-1000-4000-8000-000000000001', name: 'KAISE ELECTRIC VEHICLE',            slug: 'kaise-electric-vehicle' },
+        { id: 'a13c1e00-1000-4000-8000-000000000002', name: 'KAISE ELECTRIC VEHICLE TRACCIÓN',   slug: 'kaise-electric-vehicle-traccion' },
+        { id: 'a13c1e00-1000-4000-8000-000000000003', name: 'KAISE LEAD CARBON',                 slug: 'kaise-lead-carbon' },
+        { id: 'a13c1e00-1000-4000-8000-000000000004', name: 'KAISE SOLAR GEL',                   slug: 'kaise-solar-gel' },
+        { id: 'a13c1e00-1000-4000-8000-000000000005', name: 'KAISE DEEP CYCLE GEL',              slug: 'kaise-deep-cycle-gel' },
+        { id: 'a13c1e00-1000-4000-8000-000000000006', name: 'KAISE WIND POWER',                  slug: 'kaise-wind-power' },
+        { id: 'a15c1e00-1000-4000-8000-00000000000b', name: 'KAISE OPzV',                        slug: 'kaise-opzv' },
+    ];
 
     // ── Shared utility ─────────────────────────────────────────────────────────
 

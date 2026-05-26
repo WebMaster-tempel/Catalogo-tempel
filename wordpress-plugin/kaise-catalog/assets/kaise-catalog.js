@@ -307,6 +307,12 @@
                     const text = filters.category.find('option[value="' + v + '"]').text();
                     if (text) display = text;
                 }
+                if (k === 'technology' && window.KC && KC.TECH_DISPLAY && KC.TECH_DISPLAY[v]) {
+                    display = KC.TECH_DISPLAY[v];
+                }
+                if (k === 'voltage' && v) {
+                    display = v + ' V';
+                }
                 return `<span class="kc-chip">${label}: <strong>${escHtml(String(display))}</strong><button class="kc-chip-remove" data-key="${escHtml(k)}" aria-label="Eliminar filtro">✕</button></span>`;
             });
 
@@ -921,28 +927,34 @@
 
     // ── Categories ────────────────────────────────────────────────────────────
 
+    function _applyCategories(gammas) {
+        KC.Search.categories = gammas;
+        gammas.forEach(function (c) {
+            _catSlugMap[String(c.id)] = (c.slug || '').replace(/^kaise-/, '');
+            filters.category.append(`<option value="${escHtml(String(c.id))}">${escHtml(c.name)}</option>`);
+        });
+    }
+
     function loadCategories() {
         $.ajax({
             url:    KaiseCatalog.ajaxUrl,
             method: 'POST',
             data: { action: 'kaise_get_categories', nonce: KaiseCatalog.nonce },
             success: function (res) {
-                if (!res.success || !res.data) return;
-                const gammas = res.data.filter(c => c.level >= 3);
-                KC.Search.categories = gammas;  // wizard paso 4 reads this for category_id lookup
-                // Debug: log first category to verify slug field name
-                if (gammas.length > 0) {
-                    console.log('📦 Kaise categories — primer objeto:', gammas[0]);
-                    console.log('📦 Slug field check → id:', gammas[0].id, '| slug:', gammas[0].slug, '| name:', gammas[0].name);
+                var gammas = [];
+                if (res.success && res.data) {
+                    gammas = res.data.filter(function (c) {
+                        return c.slug && c.slug.startsWith('kaise-');
+                    });
                 }
-                gammas.forEach(function (c) {
-                    // API slugs use "kaise-" prefix (e.g. "kaise-opzv") but
-                    // KC.GAMMA_DATA uses bare IDs ("opzv"). Strip prefix here
-                    // so all compat lookups work without changes elsewhere.
-                    _catSlugMap[String(c.id)] = (c.slug || '').replace(/^kaise-/, '');
-                    filters.category.append(`<option value="${escHtml(c.id)}">${escHtml(c.name)}</option>`);
-                });
-                console.log('📦 _catSlugMap:', _catSlugMap);
+                if (gammas.length > 0) {
+                    _applyCategories(gammas);
+                } else {
+                    _applyCategories(KC.GAMMA_CATEGORIES);
+                }
+            },
+            error: function () {
+                _applyCategories(KC.GAMMA_CATEGORIES);
             },
         });
     }

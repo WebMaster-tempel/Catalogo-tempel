@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { productsApi, categoriesApi, productTypesApi, attributesApi } from '../services/api';
 import { Product } from '../types';
+import { useAuth } from '../context/AuthContext';
 
 export default function Dashboard() {
+  const { isAuthenticated } = useAuth();
   const [stats, setStats] = useState({ products: 0, categories: 0, types: 0, attributes: 0 });
   const [recentProducts, setRecentProducts] = useState<Product[]>([]);
   const [perPage, setPerPage] = useState(12);
@@ -89,7 +91,7 @@ export default function Dashboard() {
               color: 'var(--muted)',
             }}>
               <p style={{ fontSize: '14px', marginBottom: '12px' }}>No hay productos aún.</p>
-              <Link to="/products/new" className="btn btn-primary">Crear primer producto</Link>
+              {isAuthenticated && <Link to="/products/new" className="btn btn-primary">Crear primer producto</Link>}
             </div>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
@@ -192,9 +194,11 @@ export default function Dashboard() {
           <div className="card">
             <h3 style={{ marginBottom: '12px' }}>Acciones rápidas</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <Link to="/products/new" className="btn btn-primary" style={{ textAlign: 'center' }}>
-                + Nuevo producto
-              </Link>
+              {isAuthenticated && (
+                <Link to="/products/new" className="btn btn-primary" style={{ textAlign: 'center' }}>
+                  + Nuevo producto
+                </Link>
+              )}
               <Link to="/categories" className="btn" style={{ textAlign: 'center' }}>
                 Gestionar categorías
               </Link>

@@ -2,8 +2,10 @@ import { useState, useEffect, useCallback } from 'react';
 import { productTypesApi, attributesApi } from '../services/api';
 import { ProductType, Attribute } from '../types';
 import ConfirmDialog from '../components/ConfirmDialog';
+import { useAuth } from '../context/AuthContext';
 
 export default function ProductTypes() {
+  const { isAuthenticated } = useAuth();
   const [types, setTypes] = useState<ProductType[]>([]);
   const [attributes, setAttributes] = useState<Attribute[]>([]);
   const [selected, setSelected] = useState<ProductType | null>(null);
@@ -85,9 +87,11 @@ export default function ProductTypes() {
     <div>
       <div className="page-header">
         <h1>Tipos de producto ({types.length})</h1>
-        <button className="btn btn-primary" onClick={() => setShowForm(!showForm)}>
-          {showForm ? '✕ Cancelar' : '+ Nuevo tipo'}
-        </button>
+        {isAuthenticated && (
+          <button className="btn btn-primary" onClick={() => setShowForm(!showForm)}>
+            {showForm ? '✕ Cancelar' : '+ Nuevo tipo'}
+          </button>
+        )}
       </div>
 
       {error && <p className="error">{error}</p>}
@@ -174,13 +178,15 @@ export default function ProductTypes() {
                         </span>
                       </div>
                     </div>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setDeleteId(t.id); }}
-                      className="btn btn-sm btn-danger"
-                      style={{ marginLeft: '8px' }}
-                    >
-                      ✕
-                    </button>
+                    {isAuthenticated && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setDeleteId(t.id); }}
+                        className="btn btn-sm btn-danger"
+                        style={{ marginLeft: '8px' }}
+                      >
+                        ✕
+                      </button>
+                    )}
                   </div>
                 </div>
               );
@@ -278,7 +284,7 @@ export default function ProductTypes() {
                           </span>
                         )}
                       </div>
-                      <button
+                      {isAuthenticated && <button
                         onClick={() => handleRemoveAttr(a.id)}
                         style={{
                           background: 'none',
@@ -292,7 +298,7 @@ export default function ProductTypes() {
                         onMouseLeave={(e) => (e.currentTarget.style.color = '#cbd5e1')}
                       >
                         ✕
-                      </button>
+                      </button>}
                     </div>
                   ))}
                 </div>
@@ -300,7 +306,7 @@ export default function ProductTypes() {
             </div>
 
             {/* Add form */}
-            <div style={{ padding: '16px 20px', borderTop: '1px solid #e2e8f0', background: '#f8fafc' }}>
+            {isAuthenticated && <div style={{ padding: '16px 20px', borderTop: '1px solid #e2e8f0', background: '#f8fafc' }}>
               <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>
                 Asignar atributo
               </h4>
@@ -346,7 +352,7 @@ export default function ProductTypes() {
                   {saving ? '...' : '+ Asignar'}
                 </button>
               </form>
-            </div>
+            </div>}
           </div>
         )}
       </div>
