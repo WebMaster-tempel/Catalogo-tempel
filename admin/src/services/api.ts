@@ -1,24 +1,51 @@
 const BASE_URL = '/api/v1';
-const API_KEY = import.meta.env.VITE_API_KEY || 'your-secret-key-here';
+
+function getToken(): string | null {
+  return localStorage.getItem('auth_token');
+}
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const token = getToken();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
   const res = await fetch(`${BASE_URL}${path}`, {
     ...options,
     headers: {
-      'Content-Type': 'application/json',
-      'X-API-Key': API_KEY,
-      ...options.headers,
+      ...headers,
+      ...(options.headers as Record<string, string>),
     },
   });
 
   const data = await res.json();
 
   if (!res.ok) {
+    if (res.status === 401) {
+      window.dispatchEvent(new CustomEvent('auth:required'));
+    }
     throw new Error(data.message || 'API error');
   }
 
   return data;
 }
+
+// --- Auth ---
+export const authApi = {
+  login: (email: string, password: string) =>
+    request<{ token: string; user: object }>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    }),
+  register: (email: string, password: string) =>
+    request<{ token: string; user: object }>('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    }),
+};
 
 // --- Products ---
 export const productsApi = {
@@ -64,7 +91,6 @@ export const categoriesApi = {
     request<any>(`/categories/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
   delete: (id: string) =>
     request<any>(`/categories/${id}`, { method: 'DELETE' }),
-  // Category Features
   getFeatures: (categoryId: string, type?: string) =>
     request<any>(`/categories/${categoryId}/features${type ? `?type=${type}` : ''}`),
   createFeature: (categoryId: string, body: object) =>
@@ -90,11 +116,14 @@ export const attributesApi = {
 // --- Uploads ---
 export const uploadsApi = {
   upload: async (file: File): Promise<{ data: { url: string; type: string } }> => {
+    const token = getToken();
     const form = new FormData();
     form.append('file', file);
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
     const res = await fetch(`${BASE_URL}/uploads`, {
       method: 'POST',
-      headers: { 'X-API-Key': API_KEY },
+      headers,
       body: form,
     });
     const data = await res.json();

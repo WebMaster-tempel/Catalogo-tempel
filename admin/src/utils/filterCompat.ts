@@ -3,7 +3,7 @@
 
 interface GammaDef {
   technology: 'LiFePO4' | 'VRLA-AGM' | 'VRLA-GEL';
-  plate:      'Flat' | 'Tubular' | 'Prismática';
+  plate:      'Plana' | 'Tubular' | 'Prismática';
   voltages:   number[];   // exact nominal voltages available
   capMin:     number;     // Ah (C10 or equivalent)
   capMax:     number;
@@ -93,73 +93,73 @@ export const GAMMA_DATA: Record<string, GammaDef> = {
     features: ['psoc', 'carga-rapida', 'alta-ciclabilidad', 'descarga-profunda'],
   },
   'standard': {
-    technology: 'VRLA-AGM', plate: 'Flat',
+    technology: 'VRLA-AGM', plate: 'Plana',
     voltages: [6, 12], capMin: 1.2, capMax: 28,
     tags:     ['telecomunicaciones', 'alarmas-seguridad', 'iluminacion-emergencia', 'tv-cable', 'maritimo', 'medico-sanitario', 'movilidad-ligera'],
     features: [],
   },
   'long-life': {
-    technology: 'VRLA-AGM', plate: 'Flat',
+    technology: 'VRLA-AGM', plate: 'Plana',
     voltages: [12], capMin: 7.2, capMax: 250,
     tags:     ['sai-ups', 'telecomunicaciones', 'tv-cable', 'centrales-electricas', 'maritimo', 'ferroviario', 'iluminacion-emergencia'],
     features: [],
   },
   'ultra-long-life': {
-    technology: 'VRLA-AGM', plate: 'Flat',
+    technology: 'VRLA-AGM', plate: 'Plana',
     voltages: [2], capMin: 200, capMax: 3000,
     tags:     ['telecomunicaciones', 'iluminacion-emergencia', 'centrales-electricas', 'maritimo', 'alarmas-seguridad', 'sai-ups'],
     features: ['larga-vida-diseno'],
   },
   'high-rate': {
-    technology: 'VRLA-AGM', plate: 'Flat',
+    technology: 'VRLA-AGM', plate: 'Plana',
     voltages: [6, 12], capMin: 5.4, capMax: 250,
     tags:     ['telecomunicaciones', 'sai-ups', 'centrales-electricas', 'iluminacion-emergencia'],
     features: ['alta-potencia-w'],
   },
   'solar-agm': {
-    technology: 'VRLA-AGM', plate: 'Flat',
+    technology: 'VRLA-AGM', plate: 'Plana',
     voltages: [12], capMin: 80, capMax: 250,
     tags:     ['renovables', 'solar', 'iluminacion-emergencia', 'maritimo', 'telecomunicaciones', 'autocaravanas'],
     features: ['descarga-profunda', 'alta-ciclabilidad'],
   },
   'deep-cycle': {
-    technology: 'VRLA-AGM', plate: 'Flat',
+    technology: 'VRLA-AGM', plate: 'Plana',
     voltages: [12], capMin: 26, capMax: 230,
     tags:     ['solar', 'renovables', 'movilidad-ligera', 'maritimo', 'centrales-electricas', 'ferroviario', 'telecomunicaciones', 'tv-cable', 'iluminacion-emergencia', 'autocaravanas'],
     features: ['descarga-profunda', 'alta-ciclabilidad'],
   },
   'frontal-terminal': {
-    technology: 'VRLA-AGM', plate: 'Flat',
+    technology: 'VRLA-AGM', plate: 'Plana',
     voltages: [12], capMin: 100, capMax: 200,
     tags:     ['telecomunicaciones', 'sai-ups', 'centrales-electricas', 'iluminacion-emergencia'],
     features: ['terminal-frontal'],
   },
   'high-temperature': {
-    technology: 'VRLA-AGM', plate: 'Flat',
+    technology: 'VRLA-AGM', plate: 'Plana',
     voltages: [2, 12], capMin: 100, capMax: 1000,
     tags:     ['telecomunicaciones', 'renovables', 'solar', 'eolica', 'smart-grid', 'energia-hibrida'],
     features: ['alta-temperatura'],
   },
   'lead-carbon': {
-    technology: 'VRLA-AGM', plate: 'Flat',
+    technology: 'VRLA-AGM', plate: 'Plana',
     voltages: [12], capMin: 75, capMax: 250,
     tags:     ['smart-grid', 'almacenamiento-hogar', 'energia-hibrida', 'renovables', 'solar', 'eolica'],
     features: ['psoc', 'carga-rapida', 'alta-ciclabilidad', 'descarga-profunda', 'larga-vida-diseno'],
   },
   'wind-power': {
-    technology: 'VRLA-AGM', plate: 'Flat',
+    technology: 'VRLA-AGM', plate: 'Plana',
     voltages: [12], capMin: 7.2, capMax: 12,
     tags:     ['eolica', 'renovables', 'sai-ups', 'iluminacion-emergencia', 'ferroviario', 'maritimo', 'telecomunicaciones'],
     features: [],
   },
   'solar-gel': {
-    technology: 'VRLA-GEL', plate: 'Flat',
+    technology: 'VRLA-GEL', plate: 'Plana',
     voltages: [12], capMin: 80, capMax: 250,
     tags:     ['renovables', 'solar', 'iluminacion-emergencia', 'maritimo', 'telecomunicaciones', 'autocaravanas'],
     features: ['descarga-profunda', 'alta-ciclabilidad'],
   },
   'deep-cycle-gel': {
-    technology: 'VRLA-GEL', plate: 'Flat',
+    technology: 'VRLA-GEL', plate: 'Plana',
     voltages: [12], capMin: 33, capMax: 250,
     tags:     ['renovables', 'solar', 'eolica', 'tv-cable', 'telecomunicaciones', 'movilidad-ligera', 'maritimo', 'medico-sanitario', 'iluminacion-emergencia', 'centrales-electricas', 'ferroviario', 'autocaravanas'],
     features: ['descarga-profunda', 'alta-ciclabilidad', 'larga-vida-diseno'],
@@ -171,13 +171,13 @@ export const GAMMA_DATA: Record<string, GammaDef> = {
     features: ['alta-ciclabilidad', 'descarga-profunda', 'larga-vida-diseno'],
   },
   'electric-vehicle': {
-    technology: 'VRLA-AGM', plate: 'Flat',
+    technology: 'VRLA-AGM', plate: 'Plana',
     voltages: [6, 8, 12], capMin: 17, capMax: 250,
     tags:     ['movilidad-ligera', 'traccion-industrial', 'renovables'],
     features: ['descarga-profunda'],
   },
   'traccion': {
-    technology: 'VRLA-AGM', plate: 'Flat',
+    technology: 'VRLA-AGM', plate: 'Plana',
     voltages: [6, 8, 12], capMin: 120, capMax: 420,
     tags:     ['movilidad-ligera', 'traccion-industrial', 'renovables'],
     features: ['descarga-profunda'],
@@ -185,7 +185,7 @@ export const GAMMA_DATA: Record<string, GammaDef> = {
 };
 
 export const ALL_TECHNOLOGIES = ['LiFePO4', 'VRLA-AGM', 'VRLA-GEL'] as const;
-export const ALL_PLATE_TYPES  = ['Flat', 'Tubular', 'Prismática'] as const;
+export const ALL_PLATE_TYPES  = ['Plana', 'Tubular', 'Prismática'] as const;
 export const ALL_VOLTAGES     = [2, 6, 8, 12, 12.8, 25.6, 51.2] as const;
 
 // ── Filter logic ──────────────────────────────────────────────────────────────

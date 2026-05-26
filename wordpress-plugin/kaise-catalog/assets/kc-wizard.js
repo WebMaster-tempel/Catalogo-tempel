@@ -83,6 +83,11 @@
             // "Ver todo el catálogo" → buscar directamente sin wizard
             if (!s.app) {
                 KC.Search.runWizardSearch();
+                // scroll to results area (status div becomes visible after doSearch starts)
+                var $scrollTarget = $('#kc-status, #kc-results').first();
+                if ($scrollTarget.length) {
+                    $('html, body').animate({ scrollTop: $scrollTarget.offset().top - 40 }, 400);
+                }
                 return;
             }
             _clearStateFrom(2); // reset downstream on new app selection

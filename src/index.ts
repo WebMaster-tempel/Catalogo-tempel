@@ -5,6 +5,7 @@ import helmet from 'helmet';
 import path from 'path';
 import fs from 'fs';
 import { errorHandler } from './middleware/errorHandler';
+import authRoutes from './routes/auth';
 import productRoutes from './routes/products';
 import attributeRoutes from './routes/attributes';
 import productTypeRoutes from './routes/product-types';
@@ -38,6 +39,7 @@ if (fs.existsSync(adminDist)) {
 }
 
 // API Routes
+app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/products', productRoutes);
 app.use('/api/v1/attributes', attributeRoutes);
 app.use('/api/v1/product-types', productTypeRoutes);
@@ -62,8 +64,10 @@ app.get('/api/v1', (_req, res) => {
       uploads: '/api/v1/uploads',
     },
     authentication: {
-      method: 'API Key',
-      header: 'X-API-Key',
+      method: 'JWT Bearer token',
+      header: 'Authorization: Bearer <token>',
+      login: 'POST /api/v1/auth/login',
+      register: 'POST /api/v1/auth/register',
       note: 'Required for write operations',
     },
   });

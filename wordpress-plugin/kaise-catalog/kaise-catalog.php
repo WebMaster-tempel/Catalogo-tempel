@@ -90,9 +90,30 @@ add_action( 'wp_enqueue_scripts', function () {
         KAISE_CATALOG_VERSION
     );
     wp_enqueue_script(
+        'kaise-catalog-data',
+        KAISE_CATALOG_URL . 'assets/kc-data.js',
+        [],
+        KAISE_CATALOG_VERSION,
+        true
+    );
+    wp_enqueue_script(
+        'kaise-catalog-compat',
+        KAISE_CATALOG_URL . 'assets/kc-compat.js',
+        [ 'kaise-catalog-data' ],
+        KAISE_CATALOG_VERSION,
+        true
+    );
+    wp_enqueue_script(
+        'kaise-catalog-wizard',
+        KAISE_CATALOG_URL . 'assets/kc-wizard.js',
+        [ 'jquery', 'kaise-catalog-compat' ],
+        KAISE_CATALOG_VERSION,
+        true
+    );
+    wp_enqueue_script(
         'kaise-catalog',
         KAISE_CATALOG_URL . 'assets/kaise-catalog.js',
-        [ 'jquery' ],
+        [ 'jquery', 'kaise-catalog-wizard' ],
         KAISE_CATALOG_VERSION,
         true
     );
@@ -152,7 +173,7 @@ function kaise_ajax_ai_search() {
         'search (string, texto libre), voltage (number, V exactos: 2/6/12/12.8/24/25.6/48/51.2), ' .
         'capacity_min (number, Ah), capacity_max (number, Ah), ' .
         'technology (string: "VRLA-AGM"|"VRLA-GEL"|"LiFePO4"|"Lead Carbon"), ' .
-        'plate_type (string: "Tubular"|"Flat"|"Prismática"), ' .
+        'plate_type (string: "Tubular"|"Plana"|"Prismática"), ' .
         'application (string: "Telecomunicaciones"|"Solar"|"SAI"|"UPS"|"Bicicletas"|"Vehículo eléctrico"|"Industrial"|"Náutico"|"Caravana"|"Alarma"|"Tracción"), ' .
         'eurobat (boolean). ' .
         'Incluye siempre status:"published". ' .

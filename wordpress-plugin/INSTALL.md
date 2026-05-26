@@ -79,7 +79,7 @@ Esos parámetros se pasan a tu API `/products` y se muestran los resultados.
 - Tensión: 2V, 6V, 12V, 12.8V, 24V, 48V…
 - Capacidad mínima / máxima (Ah)KaiseCatalog 
 - Tecnología: VRLA-AGM, VRLA-GEL, LiFePO4, Lead Carbon
-- Tipo de placa: Flat, Tubular, Prismática
+- Tipo de placa: Plana, Tubular, Prismática
 - Aplicación: Solar, SAI/UPS, Telecomunicaciones, Bicicletas…
 - Gamma (categoría hoja, cargada desde la API)
 - Solo certificadas Eurobat

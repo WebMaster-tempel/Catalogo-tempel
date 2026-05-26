@@ -3,8 +3,10 @@ import { categoriesApi } from '../services/api';
 import { Category, CategoryFeature } from '../types';
 import ConfirmDialog from '../components/ConfirmDialog';
 import CategoryTree from '../components/CategoryTree';
+import { useAuth } from '../context/AuthContext';
 
 export default function Categories() {
+  const { isAuthenticated } = useAuth();
   const [categories, setCategories] = useState<Category[]>([]);
   const [selected, setSelected] = useState<Category | null>(null);
   const [features, setFeatures] = useState<CategoryFeature[]>([]);
@@ -175,9 +177,11 @@ export default function Categories() {
     <div>
       <div className="page-header">
         <h1>Categorías ({categories.length})</h1>
-        <button className="btn btn-primary" onClick={() => setShowNewCatForm(v => !v)}>
-          {showNewCatForm ? '✕ Cancelar' : '+ Nueva categoría'}
-        </button>
+        {isAuthenticated && (
+          <button className="btn btn-primary" onClick={() => setShowNewCatForm(v => !v)}>
+            {showNewCatForm ? '✕ Cancelar' : '+ Nueva categoría'}
+          </button>
+        )}
       </div>
 
       {error && <p className="error">{error}</p>}
@@ -267,9 +271,11 @@ export default function Categories() {
                 <code className="detail-slug">{selected.slug}</code>
               </div>
               <div className="actions" style={{ flexShrink: 0 }}>
-                <button className="btn btn-danger btn-sm" onClick={() => setDeleteId(selected.id)}>
-                  Eliminar
-                </button>
+                {isAuthenticated && (
+                  <button className="btn btn-danger btn-sm" onClick={() => setDeleteId(selected.id)}>
+                    Eliminar
+                  </button>
+                )}
                 <button className="btn btn-sm" onClick={() => setSelected(null)} title="Cerrar">
                   ✕
                 </button>
@@ -363,28 +369,32 @@ export default function Categories() {
                           <li key={f.id} className="feature-item">
                             <span className="feature-num">{i + 1}</span>
                             <span className="feature-label">{f.label}</span>
-                            <button
-                              className="feature-delete"
-                              onClick={() => setDeleteFeatureId(f.id)}
-                              title="Eliminar"
-                            >✕</button>
+                            {isAuthenticated && (
+                              <button
+                                className="feature-delete"
+                                onClick={() => setDeleteFeatureId(f.id)}
+                                title="Eliminar"
+                              >✕</button>
+                            )}
                           </li>
                         ))}
                       </ul>
                     )}
                   </div>
-                  <form className="feature-add-form" onSubmit={handleCreateFeature}>
-                    <input
-                      type="text"
-                      placeholder={`+ Añadir ${activeTab === 'application' ? 'aplicación' : 'característica'}...`}
-                      value={featureLabel}
-                      onChange={e => setFeatureLabel(e.target.value)}
-                      required
-                    />
-                    <button type="submit" className="btn btn-primary btn-sm" disabled={saving}>
-                      {saving ? '...' : 'Añadir'}
-                    </button>
-                  </form>
+                  {isAuthenticated && (
+                    <form className="feature-add-form" onSubmit={handleCreateFeature}>
+                      <input
+                        type="text"
+                        placeholder={`+ Añadir ${activeTab === 'application' ? 'aplicación' : 'característica'}...`}
+                        value={featureLabel}
+                        onChange={e => setFeatureLabel(e.target.value)}
+                        required
+                      />
+                      <button type="submit" className="btn btn-primary btn-sm" disabled={saving}>
+                        {saving ? '...' : 'Añadir'}
+                      </button>
+                    </form>
+                  )}
                 </>
               )}
 
@@ -420,37 +430,41 @@ export default function Categories() {
                                 className="video-admin-url"
                               >{url}</a>
                             </div>
-                            <button
-                              className="feature-delete"
-                              onClick={() => setDeleteFeatureId(f.id)}
-                              title="Eliminar"
-                            >✕</button>
+                            {isAuthenticated && (
+                              <button
+                                className="feature-delete"
+                                onClick={() => setDeleteFeatureId(f.id)}
+                                title="Eliminar"
+                              >✕</button>
+                            )}
                           </div>
                         );
                       })}
                     </div>
                   )}
 
-                  <form className="video-add-form" onSubmit={handleCreateVideo}>
-                    <div className="video-add-fields">
-                      <input
-                        type="text"
-                        placeholder="Título (ej. Kaise Solar GEL)"
-                        value={videoForm.title}
-                        onChange={e => setVideoForm(v => ({ ...v, title: e.target.value }))}
-                      />
-                      <input
-                        type="url"
-                        placeholder="URL de YouTube (youtu.be/... o youtube.com/shorts/...)"
-                        value={videoForm.url}
-                        onChange={e => setVideoForm(v => ({ ...v, url: e.target.value }))}
-                        required
-                      />
-                    </div>
-                    <button type="submit" className="btn btn-primary btn-sm" disabled={saving}>
-                      {saving ? '...' : '+ Añadir video'}
-                    </button>
-                  </form>
+                  {isAuthenticated && (
+                    <form className="video-add-form" onSubmit={handleCreateVideo}>
+                      <div className="video-add-fields">
+                        <input
+                          type="text"
+                          placeholder="Título (ej. Kaise Solar GEL)"
+                          value={videoForm.title}
+                          onChange={e => setVideoForm(v => ({ ...v, title: e.target.value }))}
+                        />
+                        <input
+                          type="url"
+                          placeholder="URL de YouTube (youtu.be/... o youtube.com/shorts/...)"
+                          value={videoForm.url}
+                          onChange={e => setVideoForm(v => ({ ...v, url: e.target.value }))}
+                          required
+                        />
+                      </div>
+                      <button type="submit" className="btn btn-primary btn-sm" disabled={saving}>
+                        {saving ? '...' : '+ Añadir video'}
+                      </button>
+                    </form>
+                  )}
                 </>
               )}
             </div>

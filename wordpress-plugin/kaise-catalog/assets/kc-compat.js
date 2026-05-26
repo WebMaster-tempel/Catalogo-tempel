@@ -50,7 +50,7 @@
     /** Plate types that produce ≥1 valid gamma given tech + app constraints. */
     Compat.getAvailablePlates = function (tech, app) {
         var available = new Set();
-        ['Flat', 'Tubular', 'Prismática'].forEach(function (p) {
+        ['Plana', 'Tubular', 'Prismática'].forEach(function (p) {
             if (Compat.computeValidGammas(tech, p, app).length > 0) available.add(p);
         });
         return available;

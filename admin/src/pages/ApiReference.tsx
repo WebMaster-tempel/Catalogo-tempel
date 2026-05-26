@@ -75,7 +75,7 @@ const GROUPS: GroupDef[] = [
           { in: 'query', name: 'category_id', type: 'UUID', description: 'ID de categoría (gamma)', example: '' },
           { in: 'query', name: 'product_type_id', type: 'UUID', description: 'ID del tipo de producto', example: '' },
           { in: 'query', name: 'technology', type: 'string', description: 'Tecnología: VRLA-AGM, VRLA-GEL, LiFePO4, Lead Carbon', example: 'VRLA-AGM' },
-          { in: 'query', name: 'plate_type', type: 'string', description: 'Tipo de placa: Flat, Tubular, Prismática', example: 'Tubular' },
+          { in: 'query', name: 'plate_type', type: 'string', description: 'Tipo de placa: Plana, Tubular, Prismática', example: 'Tubular' },
           { in: 'query', name: 'application', type: 'string', description: 'Aplicación: Solar, Industrial, Telecomunicaciones…', example: 'Solar' },
           { in: 'query', name: 'voltage', type: 'number', description: 'Tensión nominal en V', example: '12' },
           { in: 'query', name: 'capacity_min', type: 'number', description: 'Capacidad mínima en Ah', example: '100' },
@@ -84,7 +84,7 @@ const GROUPS: GroupDef[] = [
         ],
         responseExample: {
           data: [
-            { id: 'a1b2c3d4-...', name: 'KAISE KS12-100', slug: 'ks12-100', status: 'published', attributes_json: { voltage: 12, capacity: 100, weight: 28.5 }, categories: [{ id: '...', name: 'VRLA-AGM Flat' }] },
+            { id: 'a1b2c3d4-...', name: 'KAISE KS12-100', slug: 'ks12-100', status: 'published', attributes_json: { voltage: 12, capacity: 100, weight: 28.5 }, categories: [{ id: '...', name: 'VRLA-AGM Plana' }] },
           ],
           meta: { pagination: { page: 1, per_page: 20, total: 42, total_pages: 3 } },
         },
@@ -99,7 +99,7 @@ const GROUPS: GroupDef[] = [
           { in: 'path', name: 'id', type: 'UUID', required: true, description: 'ID único del producto' },
         ],
         responseExample: {
-          data: { id: 'uuid', name: 'KAISE KS12-100', slug: 'ks12-100', status: 'published', description: 'Batería VRLA-AGM de ciclo profundo', product_type_id: 'uuid', main_image_id: null, attributes_json: { voltage: 12, capacity: 100, weight: 28.5, terminal_type: 'M8' }, categories: [{ id: 'uuid', name: 'VRLA-AGM Flat', level: 3 }], media: [{ id: 'uuid', type: 'image', url: 'https://…/uploads/abc.jpg', title: 'Vista frontal', order: 0 }] },
+          data: { id: 'uuid', name: 'KAISE KS12-100', slug: 'ks12-100', status: 'published', description: 'Batería VRLA-AGM de ciclo profundo', product_type_id: 'uuid', main_image_id: null, attributes_json: { voltage: 12, capacity: 100, weight: 28.5, terminal_type: 'M8' }, categories: [{ id: 'uuid', name: 'VRLA-AGM Plana', level: 3 }], media: [{ id: 'uuid', type: 'image', url: 'https://…/uploads/abc.jpg', title: 'Vista frontal', order: 0 }] },
         },
       },
       {
@@ -209,7 +209,7 @@ const GROUPS: GroupDef[] = [
         path: '/api/v1/categories',
         summary: 'Listar categorías (plano)',
         auth: 'public',
-        responseExample: { data: [{ id: 'uuid', name: 'VRLA-AGM', slug: 'kaise-vrla-agm', level: 1, parent_id: null }, { id: 'uuid2', name: 'Flat', slug: 'kaise-agm-flat', level: 2, parent_id: 'uuid' }] },
+        responseExample: { data: [{ id: 'uuid', name: 'VRLA-AGM', slug: 'kaise-vrla-agm', level: 1, parent_id: null }, { id: 'uuid2', name: 'Plana', slug: 'kaise-agm-plana', level: 2, parent_id: 'uuid' }] },
       },
       {
         method: 'GET',
@@ -217,7 +217,7 @@ const GROUPS: GroupDef[] = [
         summary: 'Árbol de categorías',
         description: 'Devuelve la jerarquía completa anidada. Útil para construir selectores jerárquicos.',
         auth: 'public',
-        responseExample: { data: [{ id: 'uuid', name: 'VRLA-AGM', level: 1, children: [{ id: 'uuid2', name: 'Flat', level: 2, children: [{ id: 'uuid3', name: 'Standard', level: 3, children: [] }] }] }] },
+        responseExample: { data: [{ id: 'uuid', name: 'VRLA-AGM', level: 1, children: [{ id: 'uuid2', name: 'Plana', level: 2, children: [{ id: 'uuid3', name: 'Standard', level: 3, children: [] }] }] }] },
       },
       {
         method: 'GET',
@@ -233,7 +233,7 @@ const GROUPS: GroupDef[] = [
         summary: 'Subcategorías directas',
         auth: 'public',
         params: [{ in: 'path', name: 'id', type: 'UUID', required: true, description: 'ID de la categoría padre' }],
-        responseExample: { data: [{ id: 'uuid2', name: 'Flat', level: 2, parent_id: 'uuid' }] },
+        responseExample: { data: [{ id: 'uuid2', name: 'Plana', level: 2, parent_id: 'uuid' }] },
       },
       {
         method: 'GET',
@@ -970,7 +970,7 @@ console.log(data.map(p => p.name));`,
 const res = await fetch('/api/v1/categories/tree');
 const { data } = await res.json();
 
-// data = [ { name: 'VRLA-AGM', children: [ { name: 'Flat', children: [...] } ] } ]
+// data = [ { name: 'VRLA-AGM', children: [ { name: 'Plana', children: [...] } ] } ]
 function renderTree(nodes, level = 0) {
   nodes.forEach(node => {
     console.log(' '.repeat(level * 2) + node.name);

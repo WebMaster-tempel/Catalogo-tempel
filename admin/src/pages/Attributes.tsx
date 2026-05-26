@@ -2,8 +2,10 @@ import { useState, useEffect, useCallback } from 'react';
 import { attributesApi } from '../services/api';
 import { Attribute } from '../types';
 import ConfirmDialog from '../components/ConfirmDialog';
+import { useAuth } from '../context/AuthContext';
 
 export default function Attributes() {
+  const { isAuthenticated } = useAuth();
   const [attributes, setAttributes] = useState<Attribute[]>([]);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [error, setError] = useState('');
@@ -62,9 +64,11 @@ export default function Attributes() {
     <div>
       <div className="page-header">
         <h1>Atributos ({attributes.length})</h1>
-        <button className="btn btn-primary" onClick={() => setShowForm(!showForm)}>
-          {showForm ? '✕ Cancelar' : '+ Nuevo atributo'}
-        </button>
+        {isAuthenticated && (
+          <button className="btn btn-primary" onClick={() => setShowForm(!showForm)}>
+            {showForm ? '✕ Cancelar' : '+ Nuevo atributo'}
+          </button>
+        )}
       </div>
 
       {error && <p className="error">{error}</p>}
@@ -82,7 +86,7 @@ export default function Attributes() {
               color: 'var(--muted)',
             }}>
               <p style={{ fontSize: '14px', marginBottom: '12px' }}>Sin atributos aún.</p>
-              <button className="btn btn-primary" onClick={() => setShowForm(true)}>Crear primer atributo</button>
+              {isAuthenticated && <button className="btn btn-primary" onClick={() => setShowForm(true)}>Crear primer atributo</button>}
             </div>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px' }}>
@@ -122,13 +126,15 @@ export default function Attributes() {
                         {a.name}
                       </code>
                     </div>
-                    <button
-                      onClick={() => setDeleteId(a.id)}
-                      className="btn btn-sm btn-danger"
-                      style={{ flexShrink: 0 }}
-                    >
-                      ✕
-                    </button>
+                    {isAuthenticated && (
+                      <button
+                        onClick={() => setDeleteId(a.id)}
+                        className="btn btn-sm btn-danger"
+                        style={{ flexShrink: 0 }}
+                      >
+                        ✕
+                      </button>
+                    )}
                   </div>
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
