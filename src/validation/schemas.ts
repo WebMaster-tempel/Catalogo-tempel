@@ -57,12 +57,23 @@ export const addMediaSchema = Joi.object({
 
 export const listProductsQuerySchema = Joi.object({
   page: Joi.number().integer().min(1).default(1),
-  per_page: Joi.number().integer().min(1).max(100).default(20),
+  per_page: Joi.number().integer().min(1).max(500).default(20),
   search: Joi.string().optional(),
   category_id: Joi.string().uuid().optional(),
   product_type_id: Joi.string().uuid().optional(),
   status: Joi.string().valid('draft', 'published', 'archived').optional(),
   filters: Joi.object().unknown(true).optional(),
+  // Advanced category-based filters
+  application: Joi.string().optional(),
+  technology: Joi.string().optional(),
+  plate_type: Joi.string().optional(),
+  eurobat: Joi.boolean().optional(),
+  capacity_range: Joi.string().optional(),
+  characteristics: Joi.string().optional(),
+  // Numeric product attribute filters
+  capacity_min: Joi.number().optional(),
+  capacity_max: Joi.number().optional(),
+  voltage: Joi.number().optional(),
 });
 
 export const assignProductTypeAttributeSchema = Joi.object({

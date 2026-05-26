@@ -121,4 +121,15 @@ export interface QueryOptions {
   product_type_id?: string;
   status?: ProductStatus;
   filters?: FilterOptions;
+  // Advanced category-based filters
+  application?: string;
+  technology?: string;
+  plate_type?: string;
+  eurobat?: boolean;
+  capacity_range?: string;
+  characteristics?: string;
+  // Numeric product attribute filters
+  capacity_min?: number;
+  capacity_max?: number;
+  voltage?: number;
 }

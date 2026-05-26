@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { BaseRepository } from './BaseRepository';
 import { DbPool } from '../database/connection';
 import { Media } from '../types';
+import { v4 as uuidv4 } from 'uuid';
 
 export class MediaRepository extends BaseRepository {
   constructor(db: DbPool) {

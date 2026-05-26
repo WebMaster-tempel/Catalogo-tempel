@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s http://localhost:3000/health)",
+      "Bash(curl -s http://localhost:3000/api/v1)",
+      "Bash(python -m json.tool)",
+      "Bash(curl -s \"http://localhost:3000/api/v1/products?limit=5\")",
+      "Bash(curl -s \"http://localhost:3000/api/v1/products?per_page=3&page=1\")",
+      "Bash(curl -s \"http://localhost:3000/api/v1/categories\")",
+      "Bash(curl -s \"http://localhost:3000/api/v1/product-types\")",
+      "Bash(curl -s \"http://localhost:3000/api/v1/products?search=litio&per_page=3\")",
+      "Bash(curl -s \"http://localhost:3000/api/v1/products?status=published&per_page=2\")",
+      "Bash(curl -s \"http://localhost:3000/api/v1/products/slug-inexistente\")",
+      "Bash(npx tsc *)",
+      "Bash(npm run *)",
+      "Bash(netstat -ano)",
+      "Bash(findstr \":3000\")",
+      "Bash(findstr \"LISTENING\")",
+      "Bash(taskkill /PID 25228 /F)"
+    ]
+  }
+}

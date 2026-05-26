@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { BaseRepository } from './BaseRepository';
 import { DbPool } from '../database/connection';
 import { Product, QueryOptions, PaginationMeta } from '../types';
+import { v4 as uuidv4 } from 'uuid';
 
 export class ProductRepository extends BaseRepository {
   constructor(db: DbPool) {
@@ -142,11 +143,16 @@ export class ProductRepository extends BaseRepository {
       `SELECT p.*, pav.attributes_json
        FROM products p
        LEFT JOIN product_attribute_values pav ON p.id = pav.product_id
+       LEFT JOIN product_categories pc ON p.id = pc.product_id
+       LEFT JOIN categories c ON pc.category_id = c.id
        ${whereClause}
        ORDER BY p.created_at DESC
        LIMIT ? OFFSET ?`,
       [...params, perPage, offset]
     );
+
+    const products = rows as any[];
+    const data = await Promise.all(products.map((p) => this.attachRelations(p)));
 
     return {
       data: data as any[],

@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { DbPool } from '../database/connection';
 import { ProductAttributeValues } from '../types';
+import { v4 as uuidv4 } from 'uuid';
 
 export class ProductAttributeValuesRepository {
   private db: DbPool;

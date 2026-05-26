@@ -398,15 +398,71 @@ Common status codes:
 
 ## Development
 
-```bash
-# Run in watch mode
-npm run dev
+### Running the Full Stack
 
-# Build TypeScript
+The project includes both a REST API backend and an admin panel frontend.
+
+#### 🖥️ Terminal 1 — Backend API (puerto 3000)
+
+```bash
+npm run dev
+```
+
+This starts the API server with hot-reload. It serves:
+- REST API at `http://localhost:3000/api/v1`
+- Admin panel build at `http://localhost:3000/admin` (after building)
+
+#### 🖥️ Terminal 2 — Admin Panel (puerto 5173)
+
+In another terminal, open the admin folder:
+
+```bash
+cd admin
+npm run dev
+```
+
+This starts the Vite dev server for the admin panel on `http://localhost:5173`
+
+**Features:**
+- Dashboard with product quick view
+- Products: list/grid view, search, filter by category/type, bulk actions
+- Categories: hierarchical, color-coded, tabbed features (applications/characteristics)
+- Product Types: assign dynamic attributes with order and required flags
+- Attributes: manage global attributes with types (text, number, date, bool)
+- Media: upload and manage product images/files
+- Responsive design, dark mode ready
+
+### Build & Production
+
+```bash
+# Build TypeScript backend
 npm run build
 
+# Build admin panel
+cd admin && npm run build && cd ..
+
+# Start production server
+npm start
+```
+
+The production server serves:
+- API at `/api/v1`
+- Admin panel at `/admin` (from built dist files)
+
+### Useful Commands
+
+```bash
 # Lint code
 npm run lint
+
+# Database migrations
+npm run db:migrate
+
+# Seed sample data
+npm run db:seed
+
+# Reset database (development only)
+npm run db:reset
 ```
 
 ## Future Enhancements
