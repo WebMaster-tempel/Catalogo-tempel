@@ -60,19 +60,66 @@ function requireAuth(): void {
     jsonOut(['error' => 'Unauthorized', 'message' => 'Authentication required'], 401);
 }
 
+/**
+ * UUID v4 criptográficamente seguro usando random_bytes().
+ * Sustituye la versión anterior que usaba mt_rand() (no segura).
+ */
 function uuid(): string {
-    return sprintf(
-        '%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
-        mt_rand(0, 0xffff), mt_rand(0, 0xffff),
-        mt_rand(0, 0xffff),
-        mt_rand(0, 0x0fff) | 0x4000,
-        mt_rand(0, 0x3fff) | 0x8000,
-        mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff)
-    );
+    $data    = random_bytes(16);
+    $data[6] = chr(ord($data[6]) & 0x0f | 0x40); // versión 4
+    $data[8] = chr(ord($data[8]) & 0x3f | 0x80); // variante RFC 4122
+    return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
 }
 
 function body(): array {
     return json_decode(file_get_contents('php://input'), true) ?? [];
+}
+
+/**
+ * Valida longitud de un string. Termina con 400 si no cumple.
+ *
+ * @param string $value   Valor a validar
+ * @param string $field   Nombre del campo (para el mensaje de error)
+ * @param int    $max     Longitud máxima en bytes
+ * @param int    $min     Longitud mínima en bytes (0 = opcional)
+ */
+function validateStr(string $value, string $field, int $max, int $min = 0): void {
+    $len = strlen($value);
+    if ($min > 0 && $len < $min) {
+        jsonOut(['error' => 'INPUT_TOO_SHORT',
+                 'message' => "$field debe tener al menos $min caracteres"], 400);
+    }
+    if ($len > $max) {
+        jsonOut(['error' => 'INPUT_TOO_LONG',
+                 'message' => "$field no puede superar $max caracteres"], 400);
+    }
+}
+
+/**
+ * Valida que un valor numérico esté dentro de rango.
+ *
+ * @param mixed  $value
+ * @param string $field
+ * @param float  $min
+ * @param float  $max
+ */
+function validateNum($value, string $field, float $min = 0, float $max = PHP_INT_MAX): void {
+    $v = (float)$value;
+    if ($v < $min || $v > $max) {
+        jsonOut(['error' => 'VALUE_OUT_OF_RANGE',
+                 'message' => "$field debe estar entre $min y $max"], 400);
+    }
+}
+
+/**
+ * Valida que un string pertenezca a una lista de valores permitidos.
+ */
+function validateEnum(string $value, string $field, array $allowed): void {
+    if (!in_array($value, $allowed, true)) {
+        $list = implode(', ', $allowed);
+        jsonOut(['error' => 'INVALID_VALUE',
+                 'message' => "$field debe ser uno de: $list"], 400);
+    }
 }
 
 function notFound(string $msg = 'Not found'): void {

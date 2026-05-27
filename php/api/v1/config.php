@@ -16,3 +16,15 @@ define('JWT_SECRET', getenv('JWT_SECRET') ?: 'ad2205b0b9d050e45f7b1f2301f1ce9d23
 // Absolute path to uploads folder on the server (two levels up from api/v1/)
 define('UPLOADS_DIR', dirname(__DIR__, 2) . '/uploads/');
 define('UPLOADS_URL', '/uploads/');
+
+// ─── CORS: orígenes permitidos ────────────────────────────────────────────────
+// Añade aquí los dominios exactos desde los que se accede al panel admin y WP.
+// NO usar '*' en producción — permite peticiones autenticadas desde cualquier web.
+define('ALLOWED_ORIGINS', [
+    'https://www.tempelgroup.com',
+    'https://tempelgroup.com',
+    'https://kaise.tempelgroup.com',
+    // Desarrollo local (eliminar en producción):
+    'http://localhost:5173',
+    'http://localhost:3000',
+]);
