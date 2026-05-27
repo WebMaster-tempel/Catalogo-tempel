@@ -23,7 +23,9 @@ define('UPLOADS_URL', '/uploads/');
 define('ALLOWED_ORIGINS', [
     'https://www.tempelgroup.com',
     'https://tempelgroup.com',
-    'https://kaise.tempelgroup.com',
+    'https://kaise.es',
+    'https://catalogo.tempelgroup.com/',
+    'https://desarrollo.tempelgroup.com/'
     // Desarrollo local (eliminar en producción):
     'http://localhost:5173',
     'http://localhost:3000',
