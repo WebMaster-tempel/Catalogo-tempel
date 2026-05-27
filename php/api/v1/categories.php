@@ -81,14 +81,28 @@ function createCategory(): void {
     $b   = body();
     $id  = uuid();
     $now = date('Y-m-d H:i:s');
+
+    // ── Validación de campos ──────────────────────────────────────────────────
+    $name = $b['name'] ?? '';
+    $slug = $b['slug'] ?? '';
+    if (!$name) { jsonOut(['error' => 'MISSING_FIELDS', 'message' => 'name es requerido'], 400); }
+    validateStr($name,                         'name',            255, 1);
+    validateStr($slug,                         'slug',            255, 1);
+    validateStr($b['description']    ?? '',    'description',     5000);
+    validateStr($b['technology']     ?? '',    'technology',      100);
+    validateStr($b['plate_type']     ?? '',    'plate_type',      100);
+    validateStr($b['capacity_range'] ?? '',    'capacity_range',  100);
+    validateStr($b['applications']   ?? '',    'applications',    2000);
+    validateStr($b['characteristics'] ?? '',   'characteristics', 2000);
+
     $db->prepare(
         'INSERT INTO categories (id, name, slug, parent_id, description, technology, plate_type,
          design_life_years, cycles, capacity_range, applications, characteristics, eurobat, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     )->execute([
         $id,
-        $b['name']              ?? '',
-        $b['slug']              ?? '',
+        $name,
+        $slug,
         $b['parent_id']         ?? null,
         $b['description']       ?? null,
         $b['technology']        ?? null,
@@ -107,6 +121,17 @@ function createCategory(): void {
 function updateCategory(string $id): void {
     $db = getDb();
     $b  = body();
+
+    // ── Validación de campos presentes ────────────────────────────────────────
+    if (array_key_exists('name',            $b)) validateStr($b['name'],            'name',            255, 1);
+    if (array_key_exists('slug',            $b)) validateStr($b['slug'],            'slug',            255, 1);
+    if (array_key_exists('description',     $b)) validateStr($b['description']     ?? '', 'description',     5000);
+    if (array_key_exists('technology',      $b)) validateStr($b['technology']      ?? '', 'technology',      100);
+    if (array_key_exists('plate_type',      $b)) validateStr($b['plate_type']      ?? '', 'plate_type',      100);
+    if (array_key_exists('capacity_range',  $b)) validateStr($b['capacity_range']  ?? '', 'capacity_range',  100);
+    if (array_key_exists('applications',    $b)) validateStr($b['applications']    ?? '', 'applications',    2000);
+    if (array_key_exists('characteristics', $b)) validateStr($b['characteristics'] ?? '', 'characteristics', 2000);
+
     $allowed = ['name','slug','parent_id','description','technology','plate_type',
                 'design_life_years','cycles','capacity_range','applications',
                 'characteristics','eurobat'];

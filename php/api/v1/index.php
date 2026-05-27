@@ -1,15 +1,26 @@
 <?php
-// CORS headers
-header('Access-Control-Allow-Origin: *');
+require_once __DIR__ . '/config.php';
+
+// ─── CORS seguro: solo orígenes de la whitelist ───────────────────────────────
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+if (in_array($origin, ALLOWED_ORIGINS, true)) {
+    header('Access-Control-Allow-Origin: ' . $origin);
+    header('Vary: Origin');
+} else {
+    // Origen no permitido: no emitir cabecera ACAO → el browser bloqueará.
+    // No devolver 403 para evitar information leakage sobre qué orígenes existen.
+}
+
 header('Access-Control-Allow-Methods: GET, POST, PATCH, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, X-API-Key, Authorization');
+header('Access-Control-Max-Age: 3600');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
+    http_response_code(204);
     exit;
 }
 
-require_once __DIR__ . '/config.php';
+// config.php ya cargado al inicio (necesario para ALLOWED_ORIGINS)
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/helpers.php';
 

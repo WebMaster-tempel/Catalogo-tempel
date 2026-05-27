@@ -43,14 +43,25 @@ function createAttribute(): void {
     $b   = body();
     $id  = uuid();
     $now = date('Y-m-d H:i:s');
+
+    // ── Validación ────────────────────────────────────────────────────────────
+    $name      = $b['name']      ?? '';
+    $label     = $b['label']     ?? '';
+    $data_type = $b['data_type'] ?? 'string';
+    if (!$name || !$label) { jsonOut(['error' => 'MISSING_FIELDS', 'message' => 'name y label son requeridos'], 400); }
+    validateStr($name,            'name',      100, 1);
+    validateStr($label,           'label',     255, 1);
+    validateStr($b['unit'] ?? '', 'unit',       50);
+    validateEnum($data_type, 'data_type', ['string', 'number', 'boolean', 'date']);
+
     $db->prepare(
         'INSERT INTO attributes (id, name, label, data_type, unit, is_filterable, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
     )->execute([
         $id,
-        $b['name']          ?? '',
-        $b['label']         ?? '',
-        $b['data_type']     ?? 'string',
+        $name,
+        $label,
+        $data_type,
         $b['unit']          ?? null,
         (int)($b['is_filterable'] ?? 0),
         $now, $now,

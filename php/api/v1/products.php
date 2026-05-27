@@ -117,17 +117,27 @@ function createProduct(): void {
     $id   = uuid();
     $now  = date('Y-m-d H:i:s');
 
+    // ── Validación de campos ──────────────────────────────────────────────────
+    $name   = $b['name']   ?? '';
+    $slug   = $b['slug']   ?? '';
+    $status = $b['status'] ?? 'draft';
+    if (!$name) { jsonOut(['error' => 'MISSING_FIELDS', 'message' => 'name es requerido'], 400); }
+    validateStr($name,                     'name',        255, 1);
+    validateStr($slug,                     'slug',        255, 1);
+    validateStr($b['description'] ?? '',   'description', 10000);
+    validateEnum($status, 'status', ['draft', 'published', 'archived']);
+
     $stmt = $db->prepare(
         'INSERT INTO products (id, name, slug, description, product_type_id, status, main_image_id, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
     );
     $stmt->execute([
         $id,
-        $b['name']            ?? '',
-        $b['slug']            ?? '',
+        $name,
+        $slug,
         $b['description']     ?? null,
         $b['product_type_id'] ?? null,
-        $b['status']          ?? 'draft',
+        $status,
         $b['main_image_id']   ?? null,
         $now, $now,
     ]);
@@ -154,6 +164,12 @@ function createProduct(): void {
 function updateProduct(string $id): void {
     $db = getDb();
     $b  = body();
+
+    // ── Validación de campos presentes ────────────────────────────────────────
+    if (array_key_exists('name',        $b)) validateStr($b['name'],        'name',        255, 1);
+    if (array_key_exists('slug',        $b)) validateStr($b['slug'],        'slug',        255, 1);
+    if (array_key_exists('description', $b)) validateStr($b['description'] ?? '', 'description', 10000);
+    if (array_key_exists('status',      $b)) validateEnum($b['status'], 'status', ['draft', 'published', 'archived']);
 
     $fields = [];
     $values = [];

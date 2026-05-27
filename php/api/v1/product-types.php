@@ -55,9 +55,18 @@ function createProductType(): void {
     $b   = body();
     $id  = uuid();
     $now = date('Y-m-d H:i:s');
+
+    // ── Validación ────────────────────────────────────────────────────────────
+    $name = $b['name'] ?? '';
+    $slug = $b['slug'] ?? '';
+    if (!$name) { jsonOut(['error' => 'MISSING_FIELDS', 'message' => 'name es requerido'], 400); }
+    validateStr($name,                       'name',        255, 1);
+    validateStr($slug,                       'slug',        255);
+    validateStr($b['description'] ?? '',     'description', 5000);
+
     $db->prepare(
         'INSERT INTO product_types (id, name, slug, description, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)'
-    )->execute([$id, $b['name'] ?? '', $b['slug'] ?? '', $b['description'] ?? null, $now, $now]);
+    )->execute([$id, $name, $slug, $b['description'] ?? null, $now, $now]);
     getProductType($id);
 }
 
