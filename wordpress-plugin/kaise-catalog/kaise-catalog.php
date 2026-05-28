@@ -280,6 +280,49 @@ function kaise_ajax_search_products() {
 add_action( 'wp_ajax_kaise_get_categories',        'kaise_ajax_get_categories' );
 add_action( 'wp_ajax_nopriv_kaise_get_categories', 'kaise_ajax_get_categories' );
 
+// ─── AJAX: detalle de categoría para modal ────────────────────────────────────
+
+add_action( 'wp_ajax_kaise_get_category_detail',        'kaise_ajax_get_category_detail' );
+add_action( 'wp_ajax_nopriv_kaise_get_category_detail', 'kaise_ajax_get_category_detail' );
+
+function kaise_ajax_get_category_detail() {
+    check_ajax_referer( 'kaise_catalog', 'nonce' );
+
+    $category_id = isset( $_POST['category_id'] ) ? absint( $_POST['category_id'] ) : 0;
+    if ( ! $category_id ) {
+        wp_send_json_error( [ 'message' => 'category_id requerido' ] );
+    }
+
+    $api_url  = rtrim( get_option( 'kaise_catalog_api_url', '' ), '/' );
+    $cache_key = 'kaise_cat_detail_' . $category_id;
+    $cached    = get_transient( $cache_key );
+
+    if ( $cached !== false ) {
+        wp_send_json_success( $cached );
+    }
+
+    $response = wp_remote_get( $api_url . '/categories/' . $category_id, [ 'timeout' => 30 ] );
+
+    if ( is_wp_error( $response ) ) {
+        wp_send_json_error( [ 'message' => $response->get_error_message() ] );
+    }
+
+    $code = wp_remote_retrieve_response_code( $response );
+    $body = json_decode( wp_remote_retrieve_body( $response ), true );
+
+    if ( $code !== 200 ) {
+        wp_send_json_error( [ 'message' => $body['message'] ?? 'Error de la API' ] );
+    }
+
+    $payload = [
+        'category' => $body['data']             ?? $body,
+        'features' => $body['data']['features'] ?? $body['features'] ?? [],
+    ];
+
+    set_transient( $cache_key, $payload, HOUR_IN_SECONDS * 6 );
+    wp_send_json_success( $payload );
+}
+
 function kaise_ajax_get_categories() {
     check_ajax_referer( 'kaise_catalog', 'nonce' );
 
