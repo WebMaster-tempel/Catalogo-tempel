@@ -9,10 +9,9 @@
  *
  * Provides: KC.Wizard
  *
- * KC.Wizard.init($wrap) must be called after KC.Search is populated by kaise-catalog.js.
- *
  * Step flow:
- *   1 Aplicación → 2 Características → 3 Tecnología → 4 Gama → 5 Voltaje → 6 Capacidad → 7 Resumen
+ *   1 Aplicación → 2 Características → 3 Tecnología → 4 Placa* → 5 Gama → 6 Voltaje → 7 Capacidad → 8 Resumen
+ *   (* Paso 4 se auto-salta cuando la tecnología tiene un único tipo de placa disponible)
  *
  * Any step can be skipped (= "Cualquiera").
  * Navigating backwards preserves all selections; re-selecting in a step
@@ -30,6 +29,7 @@
         app:             '',
         appLabel:        '',
         tech:            '',
+        plate:           '',
         volt:            '',
         characteristics: [],
         gamma:           '',
@@ -73,28 +73,23 @@
 
         // ── Paso 1: Aplicación ──────────────────────────────────────────────
         $wrap.on('click', '.kc-app-tile', function () {
-            s.app      = $(this).data('app')  || '';
-            s.appLabel = $(this).find('.kc-app-name').text() || '';
-
-            // Pre-selected tech from tile (e.g. Bicicletas → LiFePO4)
             var tiletech = $(this).data('tech') || '';
-            s.tech = tiletech;
 
-            // "Ver todo el catálogo" → buscar directamente sin wizard
-            if (!s.app) {
-                KC.Search.runWizardSearch();
-                // scroll to results area (status div becomes visible after doSearch starts)
-                var $scrollTarget = $('#kc-status, #kc-results').first();
-                if ($scrollTarget.length) {
-                    $('html, body').animate({ scrollTop: $scrollTarget.offset().top - 40 }, 400);
-                }
-                return;
-            }
-            _clearStateFrom(2); // reset downstream on new app selection
-            s.app      = $(this).data('app');
-            s.appLabel = $(this).find('.kc-app-name').text();
+            // Sin aplicación (Ver todo / continuar sin filtro) → paso 2 sin app
+            _clearStateFrom(2);
+            s.app      = $(this).data('app') || '';
+            s.appLabel = s.app ? ($(this).find('.kc-app-name').text() || '') : '';
             s.tech     = tiletech;
             goToStep(2);
+        });
+
+        // ── Paso 1: buscador de aplicación ─────────────────────────────────
+        $wrap.on('input', '#kc-app-search', function () {
+            var q = $(this).val().toLowerCase().trim();
+            $wrap.find('.kc-app-tile').each(function () {
+                var text = $(this).text().toLowerCase();
+                $(this).toggle(!q || text.indexOf(q) !== -1);
+            });
         });
 
         // ── Paso 2: Características (multi-select) ──────────────────────────
@@ -123,10 +118,33 @@
                 s.tech = newTech;
                 _clearStateFrom(4);
             }
-            goToStep(4);
+            // Auto-skip plate step when tech not selected or only one plate type available
+            var availPlates = KC.Compat.getAvailablePlates(s.tech || null, s.app || null);
+            if (!s.tech || availPlates.size <= 1) {
+                s.plate = availPlates.size === 1 ? Array.from(availPlates)[0] : '';
+                goToStep(5);
+            } else {
+                goToStep(4);
+            }
         });
 
-        // ── Paso 4: Gama ────────────────────────────────────────────────────
+        // ── Paso 4: Tipo de placa ───────────────────────────────────────────
+        $wrap.on('click', '#kc-plate-grid .kc-plate-pill', function () {
+            var newPlate = $(this).data('plate') || '';
+            if (newPlate !== s.plate) {
+                s.plate = newPlate;
+                _clearStateFrom(5);
+            }
+            goToStep(5);
+        });
+
+        $wrap.on('click', '#kc-step4-plate-skip', function () {
+            s.plate = '';
+            _clearStateFrom(5);
+            goToStep(5);
+        });
+
+        // ── Paso 5: Gama ────────────────────────────────────────────────────
         $wrap.on('click', '.kc-gamma-card:not([disabled])', function () {
             var newGamma = $(this).data('gamma') || '';
             if (newGamma !== s.gamma) {
@@ -134,35 +152,34 @@
                 if (s.gamma) {
                     var cat = (KC.Search && KC.Search.categories || [])
                         .find(function (c) {
-                            // API slugs have "kaise-" prefix; strip for comparison
                             return (c.slug || '').replace(/^kaise-/, '') === s.gamma;
                         });
                     s.categoryId = cat ? String(cat.id) : '';
                 } else {
                     s.categoryId = '';
                 }
-                _clearStateFrom(5);
+                _clearStateFrom(6);
             }
-            goToStep(5);
+            goToStep(6);
         });
 
-        $wrap.on('click', '#kc-step4-skip', function () {
+        $wrap.on('click', '#kc-step5-skip', function () {
             s.gamma      = '';
             s.categoryId = '';
-            _clearStateFrom(5);
-            goToStep(5);
+            _clearStateFrom(6);
+            goToStep(6);
         });
 
-        // ── Paso 5: Voltaje ─────────────────────────────────────────────────
+        // ── Paso 6: Voltaje ─────────────────────────────────────────────────
         $wrap.on('click', '#kc-wizard-volt-pills .kc-volt-pill:not([disabled])', function () {
             var newVolt = $(this).data('v') || '';
             $('#kc-wizard-volt-pills .kc-volt-pill').removeClass('is-active');
             $(this).addClass('is-active');
             s.volt = newVolt;
-            goToStep(6);
+            goToStep(7);
         });
 
-        // ── Paso 6: Capacidad ───────────────────────────────────────────────
+        // ── Paso 7: Capacidad ───────────────────────────────────────────────
         $wrap.on('click', '.kc-cap-btn', function () {
             $('.kc-cap-btn').removeClass('is-active');
             $(this).addClass('is-active');
@@ -170,21 +187,21 @@
             $('#kc-w-cap-max').val($(this).data('max') || '');
         });
 
-        $wrap.on('click', '#kc-step6-next', function () {
+        $wrap.on('click', '#kc-step7-next', function () {
             _captureCapacity();
-            goToStep(7);
+            goToStep(8);
         });
 
-        $wrap.on('click', '#kc-step6-skip', function () {
+        $wrap.on('click', '#kc-step7-skip', function () {
             s.capMin = '';
             s.capMax = '';
             $('#kc-w-cap-min, #kc-w-cap-max').val('');
             $('.kc-cap-btn').removeClass('is-active');
             $('.kc-cap-btn[data-min=""]').addClass('is-active');
-            goToStep(7);
+            goToStep(8);
         });
 
-        // ── Paso 7: Resumen ─────────────────────────────────────────────────
+        // ── Paso 8: Resumen ─────────────────────────────────────────────────
         $wrap.on('click', '#kc-wizard-search', function () {
             KC.Search.runWizardSearch();
         });
@@ -207,7 +224,7 @@
             goToStep(target); // back never clears state
         });
 
-        // ── Reiniciar (delegated — button exists in step-6 and step-7) ────────
+        // ── Reiniciar (delegated — button exists in step-7 and step-8) ────────
         $wrap.on('click', '#kc-wizard-reset', function () { Wizard.reset(); });
     }
 
@@ -229,10 +246,11 @@
         // Step-specific preparation
         if (n === 2) _syncCharPills();
         if (n === 3) _prepareStep3();
-        if (n === 4) _renderGammaGrid();
-        if (n === 5) _prepareStep5();
-        if (n === 6) _syncCapacityUI();
-        if (n === 7) _renderSummary();
+        if (n === 4) _prepareStep4();
+        if (n === 5) _renderGammaGrid();
+        if (n === 6) _prepareStep6();
+        if (n === 7) _syncCapacityUI();
+        if (n === 8) _renderSummary();
     }
 
     // ── Progress bar ─────────────────────────────────────────────────────────
@@ -253,14 +271,13 @@
         });
 
         $bar.find('.kc-wp-line').each(function (i) {
-            // line i connects dot i+1 to dot i+2 (0-indexed)
             $(this).toggleClass('is-done', (i + 1) < currentStep);
         });
     }
 
     // ── Breadcrumb ───────────────────────────────────────────────────────────
 
-    var STEP_LABELS = ['Aplicación', 'Características', 'Tecnología', 'Gama', 'Voltaje', 'Capacidad'];
+    var STEP_LABELS = ['Aplicación', 'Características', 'Tecnología', 'Placa', 'Gama', 'Voltaje', 'Capacidad'];
 
     function _updateBreadcrumb(currentStep) {
         var $bc = $('#kc-wizard-breadcrumb');
@@ -271,12 +288,10 @@
 
         var chips = [];
 
-        // Step 1 — app (always present if we're past step 1)
         if (s.app) {
             chips.push(_chip(1, (KC.APP_ICONS[s.app] || '🔋') + ' ' + s.app));
         }
 
-        // Steps 2-6 — only show if past that step AND has a selection
         if (currentStep > 2 && s.characteristics.length > 0) {
             var charNames = s.characteristics.map(function (c) {
                 return KC.CHAR_LABELS[c] || c;
@@ -288,17 +303,21 @@
             chips.push(_chip(3, '🔬 ' + (KC.TECH_DISPLAY[s.tech] || s.tech)));
         }
 
-        if (currentStep > 4 && s.gamma) {
+        if (currentStep > 4 && s.plate) {
+            chips.push(_chip(4, '▬ ' + s.plate));
+        }
+
+        if (currentStep > 5 && s.gamma) {
             var gl = KC.GAMMA_LABELS[s.gamma];
-            chips.push(_chip(4, (gl ? gl.icon + ' ' + gl.name : s.gamma)));
+            chips.push(_chip(5, (gl ? gl.icon + ' ' + gl.name : s.gamma)));
         }
 
-        if (currentStep > 5 && s.volt) {
-            chips.push(_chip(5, '⚡ ' + s.volt + ' V'));
+        if (currentStep > 6 && s.volt) {
+            chips.push(_chip(6, '⚡ ' + s.volt + ' V'));
         }
 
-        if (currentStep > 6 && (s.capMin || s.capMax)) {
-            chips.push(_chip(6, '📊 ' + _capLabel(s.capMin, s.capMax)));
+        if (currentStep > 7 && (s.capMin || s.capMax)) {
+            chips.push(_chip(7, '📊 ' + _capLabel(s.capMin, s.capMax)));
         }
 
         if (chips.length === 0) {
@@ -322,12 +341,11 @@
             var charId = $(this).data('char');
             $(this).toggleClass('is-active', s.characteristics.indexOf(charId) >= 0);
         });
-        // Update app badge
         $('#kc-step2-app-label').text(s.appLabel ? '— ' + s.appLabel : '');
     }
 
     function _prepareStep3() {
-        var gammasAfterChars = _getFilteredGammas(s.app, s.characteristics, null);
+        var gammasAfterChars = _getFilteredGammas(s.app, s.characteristics, null, null);
         var availTechs = new Set(gammasAfterChars.map(function (g) {
             return g.isLeadCarbon ? 'Lead Carbon' : g.technology;
         }));
@@ -345,18 +363,45 @@
             $(this).attr('title', avail ? '' : 'No disponible con los filtros anteriores');
         });
 
-        // Invalidate pre-selected tech if no longer compatible
         if (s.tech && !availTechs.has(s.tech)) {
             s.tech = '';
         }
     }
 
+    function _prepareStep4() {
+        var availPlates = KC.Compat.getAvailablePlates(s.tech || null, s.app || null);
+        var $grid = $('#kc-plate-grid');
+        $grid.empty();
+
+        var plateInfo = {
+            'Plana':      { icon: '▬', desc: 'Construcción de placa plana' },
+            'Tubular':    { icon: '⬭', desc: 'Placas tubulares — OPzV/OPzS' },
+            'Prismática': { icon: '▮', desc: 'Celdas prismáticas LiFePO4' },
+        };
+
+        availPlates.forEach(function (plate) {
+            var info = plateInfo[plate] || { icon: '▪', desc: '' };
+            var isActive = plate === s.plate;
+            $grid.append(
+                '<button class="kc-plate-pill' + (isActive ? ' is-active' : '') + '" data-plate="' + KC.escHtml(plate) + '">' +
+                '<span class="kc-plate-icon">' + info.icon + '</span>' +
+                '<span class="kc-plate-name">' + KC.escHtml(plate) + '</span>' +
+                '<span class="kc-plate-desc">' + KC.escHtml(info.desc) + '</span>' +
+                '</button>'
+            );
+        });
+    }
+
     function _renderGammaGrid() {
-        var gammas = _getFilteredGammas(s.app, s.characteristics, s.tech);
+        var gammas = _getFilteredGammas(s.app, s.characteristics, s.tech, s.plate);
         var $grid  = $('#kc-gamma-grid');
         $grid.empty();
 
-        // Validate previously selected gamma
+        // Update step-5 back button: go to plate step only if it was shown
+        var availPlates = KC.Compat.getAvailablePlates(s.tech || null, s.app || null);
+        var backStep = (s.tech && availPlates.size > 1) ? 4 : 3;
+        $('#kc-step-5 .kc-step-back').data('back', backStep).attr('data-back', backStep);
+
         if (s.gamma) {
             var stillValid = gammas.some(function (g) { return g.id === s.gamma; });
             if (!stillValid) {
@@ -365,7 +410,6 @@
             }
         }
 
-        // "Cualquiera" card always first
         $grid.append(
             '<button class="kc-gamma-card kc-gamma-card-any" data-gamma="">' +
             '<span class="kc-gamma-icon">🔋</span>' +
@@ -392,25 +436,20 @@
         });
     }
 
-    function _prepareStep5() {
-        // Reset all pills first
+    function _prepareStep6() {
         $('#kc-wizard-volt-pills .kc-volt-pill')
             .prop('disabled', false).removeClass('is-disabled').removeAttr('title');
 
-        // Restore active state from saved selection
         $('#kc-wizard-volt-pills .kc-volt-pill').each(function () {
             $(this).toggleClass('is-active', String($(this).data('v') || '') === String(s.volt));
         });
 
-        // Compute allowed voltages
         var allowed;
 
         if (s.gamma) {
-            // Specific gamma: only its voltages
             allowed = KC.GAMMA_VOLTAGES[s.gamma];
         } else {
-            // No gamma: union of voltages from all filtered gammas
-            var filteredGammas = _getFilteredGammas(s.app, s.characteristics, s.tech);
+            var filteredGammas = _getFilteredGammas(s.app, s.characteristics, s.tech, s.plate);
             if (filteredGammas.length > 0) {
                 var voltSet = new Set();
                 filteredGammas.forEach(function (g) {
@@ -422,18 +461,23 @@
 
         if (!allowed || allowed.length === 0) return;
 
-        KC.Compat.logCompatibility('Wizard paso 5 — voltajes disponibles', s.tech || null, null, s.app || null);
+        KC.Compat.logCompatibility('Wizard paso 6 — voltajes disponibles', s.tech || null, null, s.app || null);
         console.log('⚡ Voltajes permitidos para selección actual:', allowed);
+        console.log('   Estado wizard actual:', {
+            app: s.app || null, tech: s.tech || null, plate: s.plate || null,
+            gamma: s.gamma || null, volt: s.volt || null,
+            capMin: s.capMin || null, capMax: s.capMax || null,
+            categoryId: s.categoryId || null,
+        });
 
         $('#kc-wizard-volt-pills .kc-volt-pill').each(function () {
             var v = $(this).data('v');
-            if (!v) return; // "Cualquiera" siempre disponible
+            if (!v) return;
             var avail = allowed.indexOf(parseFloat(v)) >= 0;
             $(this).prop('disabled', !avail).toggleClass('is-disabled', !avail);
             if (!avail) $(this).attr('title', 'No disponible con los filtros seleccionados');
         });
 
-        // Invalidate previously selected volt if no longer available
         if (s.volt && allowed.indexOf(parseFloat(s.volt)) < 0) {
             s.volt = '';
             $('#kc-wizard-volt-pills .kc-volt-pill').removeClass('is-active');
@@ -444,7 +488,6 @@
         $('#kc-w-cap-min').val(s.capMin || '');
         $('#kc-w-cap-max').val(s.capMax || '');
 
-        // Restore cap button active state
         $('.kc-cap-btn').removeClass('is-active');
         var matched = false;
         $('.kc-cap-btn').each(function () {
@@ -460,16 +503,17 @@
         }
     }
 
-    // ── Summary (step 7) ─────────────────────────────────────────────────────
+    // ── Summary (step 8) ─────────────────────────────────────────────────────
 
     function _renderSummary() {
         var rows = [
-            { label: 'Aplicación',      step: 1, value: s.app      ? (KC.APP_ICONS[s.app] || '') + ' ' + s.app                           : null },
+            { label: 'Aplicación',      step: 1, value: s.app   ? (KC.APP_ICONS[s.app] || '') + ' ' + s.app : null },
             { label: 'Características', step: 2, value: s.characteristics.length ? s.characteristics.map(function (c) { return KC.CHAR_LABELS[c] || c; }).join(', ') : null },
-            { label: 'Tecnología',      step: 3, value: s.tech     ? (KC.TECH_DISPLAY[s.tech] || s.tech)                                  : null },
-            { label: 'Gama',            step: 4, value: s.gamma    ? (KC.GAMMA_LABELS[s.gamma] ? KC.GAMMA_LABELS[s.gamma].icon + ' ' + KC.GAMMA_LABELS[s.gamma].name : s.gamma) : null },
-            { label: 'Voltaje',         step: 5, value: s.volt     ? s.volt + ' V'                                                        : null },
-            { label: 'Capacidad',       step: 6, value: _capLabel(s.capMin, s.capMax) },
+            { label: 'Tecnología',      step: 3, value: s.tech  ? (KC.TECH_DISPLAY[s.tech] || s.tech) : null },
+            { label: 'Placa',           step: 4, value: s.plate || null },
+            { label: 'Gama',            step: 5, value: s.gamma ? (KC.GAMMA_LABELS[s.gamma] ? KC.GAMMA_LABELS[s.gamma].icon + ' ' + KC.GAMMA_LABELS[s.gamma].name : s.gamma) : null },
+            { label: 'Voltaje',         step: 6, value: s.volt  ? s.volt + ' V' : null },
+            { label: 'Capacidad',       step: 7, value: _capLabel(s.capMin, s.capMax) },
         ];
 
         var html = '<div class="kc-summary-table">' +
@@ -491,12 +535,9 @@
     // ── Filtering helpers ─────────────────────────────────────────────────────
 
     /**
-     * Returns gamma objects compatible with app + characteristics + tech.
-     * @param {string|null} app
-     * @param {string[]}    chars
-     * @param {string|null} tech
+     * Returns gamma objects compatible with app + characteristics + tech + plate.
      */
-    function _getFilteredGammas(app, chars, tech) {
+    function _getFilteredGammas(app, chars, tech, plate) {
         var gammas = KC.Compat.computeValidGammas(null, null, app || null);
 
         if (chars && chars.length > 0) {
@@ -513,18 +554,22 @@
             });
         }
 
+        if (plate) {
+            gammas = gammas.filter(function (g) { return g.plate === plate; });
+        }
+
         return gammas;
     }
 
     // ── State helpers ─────────────────────────────────────────────────────────
 
-    /** Clear wizard state for step n and all downstream steps. */
     function _clearStateFrom(n) {
         if (n <= 2) { s.characteristics = []; }
         if (n <= 3) { s.tech = ''; }
-        if (n <= 4) { s.gamma = ''; s.categoryId = ''; }
-        if (n <= 5) { s.volt = ''; }
-        if (n <= 6) { s.capMin = ''; s.capMax = ''; }
+        if (n <= 4) { s.plate = ''; }
+        if (n <= 5) { s.gamma = ''; s.categoryId = ''; }
+        if (n <= 6) { s.volt = ''; }
+        if (n <= 7) { s.capMin = ''; s.capMax = ''; }
     }
 
     function _captureCapacity() {

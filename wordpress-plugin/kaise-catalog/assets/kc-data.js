@@ -112,17 +112,31 @@
 
     // Maps plugin/API application values → APP_COMPAT keys
     KC.APP_TO_COMPAT = {
-        'Solar':              'Energías Renovables',
-        'SAI':                'UPS',
-        'UPS':                'UPS',
-        'Telecomunicaciones': 'Telecomunicaciones',
-        'Bicicletas':         null,
-        'Vehículo eléctrico': 'Movilidad',
-        'Caravana':           'Energías Renovables',
-        'Náutico':            'Movilidad',
-        'Industrial':         'Universal',
-        'Alarma':             'Universal',
-        'Tracción':           'Movilidad',
+        // IT / Infraestructura
+        'Telecomunicaciones':  'Telecomunicaciones',
+        'SAI':                 'UPS',
+        'UPS':                 'UPS',
+        'TV Cable':            'TV por Cable',
+        'Iluminación':         'Iluminación Emergencia',
+        // Energías
+        'Solar':               'Energías Renovables',
+        'Eólica':              'Energías Renovables',
+        'Energías Renovables': 'Energías Renovables',
+        'Almacenamiento':      'Energías Renovables',
+        'Híbrida':             'Energías Renovables',
+        'SmartGrid':           'Centrales Eléctricas',
+        'Centrales':           'Centrales Eléctricas',
+        // Movilidad
+        'Bicicletas':          'Movilidad',
+        'Tracción':            'Movilidad',
+        'Náutico':             'Movilidad',
+        'Vehículo eléctrico':  'Movilidad',
+        // Otros
+        'Caravana':            'Energías Renovables',
+        'Industrial':          'Universal',
+        'Alarma':              'Universal',
+        'Ferroviario':         'Red Ferroviaria',
+        'Sanitario':           'Sanitario',
     };
 
     // ── Wizard-specific data ───────────────────────────────────────────────────
@@ -188,14 +202,27 @@
     };
 
     KC.APP_ICONS = {
-        'Solar':              '☀️',
-        'SAI':                '🔌',
-        'Telecomunicaciones': '📡',
-        'Bicicletas':         '🚲',
-        'Vehículo eléctrico': '🚗',
-        'Caravana':           '🏕️',
-        'Industrial':         '🏭',
-        'Alarma':             '🔒',
+        'Telecomunicaciones':  '📡',
+        'SAI':                 '🔌',
+        'Iluminación':         '💡',
+        'Centrales':           '⚡',
+        'Alarma':              '🔒',
+        'Náutico':             '⛵',
+        'Energías Renovables': '🌱',
+        'Solar':               '☀️',
+        'Eólica':              '💨',
+        'SmartGrid':           '🔗',
+        'Almacenamiento':      '🏠',
+        'Híbrida':             '⚡',
+        'Ferroviario':         '🚂',
+        'Bicicletas':          '🚲',
+        'Tracción':            '🚜',
+        'TV Cable':            '📺',
+        'Sanitario':           '🏥',
+        'Caravana':            '🏕️',
+        'Industrial':          '🏭',
+        'Vehículo eléctrico':  '🚗',
+        'UPS':                 '🔌',
     };
 
     KC.TECH_DISPLAY = {

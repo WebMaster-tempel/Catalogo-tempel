@@ -21,56 +21,109 @@
                     <div class="kc-step-sub">Selecciona la aplicación principal</div>
                 </div>
             </div>
+            <div class="kc-app-search-wrap">
+                <input type="search" id="kc-app-search" class="kc-app-search" placeholder="🔍 Buscar aplicación…" autocomplete="off">
+            </div>
             <div class="kc-app-grid">
-                <button class="kc-app-tile" data-app="Solar" data-tech="">
-                    <span class="kc-app-icon">☀️</span>
-                    <span class="kc-app-name">Energía solar</span>
-                    <span class="kc-app-desc">Fotovoltaica, placas solares</span>
+                <button class="kc-app-tile" data-app="Telecomunicaciones" data-tech="">
+                    <span class="kc-app-icon">📡</span>
+                    <span class="kc-app-name">Telecomunicaciones</span>
+                    <span class="kc-app-desc">Redes, estaciones base, CPD</span>
                 </button>
                 <button class="kc-app-tile" data-app="SAI" data-tech="">
                     <span class="kc-app-icon">🔌</span>
                     <span class="kc-app-name">SAI / UPS</span>
                     <span class="kc-app-desc">Sistemas ininterrumpibles</span>
                 </button>
-                <button class="kc-app-tile" data-app="Telecomunicaciones" data-tech="">
-                    <span class="kc-app-icon">📡</span>
-                    <span class="kc-app-name">Telecomunicaciones</span>
-                    <span class="kc-app-desc">Redes, estaciones base, CPD</span>
+                <button class="kc-app-tile" data-app="Iluminación" data-tech="">
+                    <span class="kc-app-icon">💡</span>
+                    <span class="kc-app-name">Iluminación emergencia</span>
+                    <span class="kc-app-desc">Alumbrado público, señalización</span>
                 </button>
-                <button class="kc-app-tile" data-app="Bicicletas" data-tech="LiFePO4">
-                    <span class="kc-app-icon">🚲</span>
-                    <span class="kc-app-name">Bicicleta eléctrica</span>
-                    <span class="kc-app-desc">E-bike, patinete, scooter</span>
-                </button>
-                <button class="kc-app-tile" data-app="Vehículo eléctrico" data-tech="">
-                    <span class="kc-app-icon">🚗</span>
-                    <span class="kc-app-name">Vehículo eléctrico</span>
-                    <span class="kc-app-desc">Carretilla, golf, industrial</span>
-                </button>
-                <button class="kc-app-tile" data-app="Caravana" data-tech="">
-                    <span class="kc-app-icon">🏕️</span>
-                    <span class="kc-app-name">Caravana / Náutico</span>
-                    <span class="kc-app-desc">Autocaravana, barco, marina</span>
-                </button>
-                <button class="kc-app-tile" data-app="Industrial" data-tech="">
-                    <span class="kc-app-icon">🏭</span>
-                    <span class="kc-app-name">Industrial</span>
-                    <span class="kc-app-desc">Tracción, maquinaria pesada</span>
+                <button class="kc-app-tile" data-app="Centrales" data-tech="">
+                    <span class="kc-app-icon">⚡</span>
+                    <span class="kc-app-name">Centrales eléctricas</span>
+                    <span class="kc-app-desc">Generación, subestaciones</span>
                 </button>
                 <button class="kc-app-tile" data-app="Alarma" data-tech="">
                     <span class="kc-app-icon">🔒</span>
-                    <span class="kc-app-name">Alarma / Seguridad</span>
+                    <span class="kc-app-name">Alarmas y seguridad</span>
                     <span class="kc-app-desc">CCTV, control de acceso</span>
+                </button>
+                <button class="kc-app-tile" data-app="Náutico" data-tech="">
+                    <span class="kc-app-icon">⛵</span>
+                    <span class="kc-app-name">Marítimo</span>
+                    <span class="kc-app-desc">Barco, marina, yate</span>
+                </button>
+                <button class="kc-app-tile" data-app="Energías Renovables" data-tech="">
+                    <span class="kc-app-icon">🌱</span>
+                    <span class="kc-app-name">Energías renovables</span>
+                    <span class="kc-app-desc">Almacenamiento ciclo completo</span>
+                </button>
+                <button class="kc-app-tile" data-app="Solar" data-tech="">
+                    <span class="kc-app-icon">☀️</span>
+                    <span class="kc-app-name">Solar</span>
+                    <span class="kc-app-desc">Fotovoltaica, placas solares</span>
+                </button>
+                <button class="kc-app-tile" data-app="Eólica" data-tech="">
+                    <span class="kc-app-icon">💨</span>
+                    <span class="kc-app-name">Eólica</span>
+                    <span class="kc-app-desc">Aerogeneradores, parques</span>
+                </button>
+                <button class="kc-app-tile" data-app="SmartGrid" data-tech="">
+                    <span class="kc-app-icon">🔗</span>
+                    <span class="kc-app-name">Red inteligente</span>
+                    <span class="kc-app-desc">Smart grid, gestión de red</span>
+                </button>
+                <button class="kc-app-tile" data-app="Almacenamiento" data-tech="">
+                    <span class="kc-app-icon">🏠</span>
+                    <span class="kc-app-name">Almacenamiento doméstico</span>
+                    <span class="kc-app-desc">Home energy, autoconsumo</span>
+                </button>
+                <button class="kc-app-tile" data-app="Híbrida" data-tech="">
+                    <span class="kc-app-icon">⚡</span>
+                    <span class="kc-app-name">Energía híbrida</span>
+                    <span class="kc-app-desc">Sistemas híbridos solar+red</span>
+                </button>
+                <button class="kc-app-tile" data-app="Ferroviario" data-tech="">
+                    <span class="kc-app-icon">🚂</span>
+                    <span class="kc-app-name">Ferroviario</span>
+                    <span class="kc-app-desc">Trenes, metro, tranvía</span>
+                </button>
+                <button class="kc-app-tile" data-app="Bicicletas" data-tech="LiFePO4">
+                    <span class="kc-app-icon">🚲</span>
+                    <span class="kc-app-name">Movilidad ligera</span>
+                    <span class="kc-app-desc">E-bike, patinete, scooter</span>
+                </button>
+                <button class="kc-app-tile" data-app="Tracción" data-tech="">
+                    <span class="kc-app-icon">🚜</span>
+                    <span class="kc-app-name">Tracción industrial</span>
+                    <span class="kc-app-desc">Carretillas, AGV, golf</span>
+                </button>
+                <button class="kc-app-tile" data-app="TV Cable" data-tech="">
+                    <span class="kc-app-icon">📺</span>
+                    <span class="kc-app-name">TV por cable</span>
+                    <span class="kc-app-desc">CATV, distribución de señal</span>
+                </button>
+                <button class="kc-app-tile" data-app="Sanitario" data-tech="">
+                    <span class="kc-app-icon">🏥</span>
+                    <span class="kc-app-name">Médico / Sanitario</span>
+                    <span class="kc-app-desc">Equipos médicos, sillas de ruedas</span>
+                </button>
+                <button class="kc-app-tile" data-app="Caravana" data-tech="">
+                    <span class="kc-app-icon">🏕️</span>
+                    <span class="kc-app-name">Autocaravanas / Camping</span>
+                    <span class="kc-app-desc">Caravanas, motorhomes</span>
                 </button>
                 <button class="kc-app-tile kc-app-tile-all" data-app="" data-tech="">
                     <span class="kc-app-icon">🔋</span>
-                    <span class="kc-app-name">Ver todo el catálogo</span>
-                    <span class="kc-app-desc">Sin filtro de aplicación</span>
+                    <span class="kc-app-name">Sin filtro de aplicación</span>
+                    <span class="kc-app-desc">Continuar sin seleccionar</span>
                 </button>
             </div>
         </div>
 
-        <!-- Barra de progreso del wizard (compartida, visible en pasos 2-7) -->
+        <!-- Barra de progreso del wizard (compartida, visible en pasos 2-8) -->
         <div id="kc-wizard-progress" class="kc-wizard-progress" hidden>
             <span class="kc-wp-dot" data-step="1" title="Aplicación"></span>
             <span class="kc-wp-line"></span>
@@ -78,13 +131,15 @@
             <span class="kc-wp-line"></span>
             <span class="kc-wp-dot" data-step="3" title="Tecnología"></span>
             <span class="kc-wp-line"></span>
-            <span class="kc-wp-dot" data-step="4" title="Gama"></span>
+            <span class="kc-wp-dot" data-step="4" title="Placa"></span>
             <span class="kc-wp-line"></span>
-            <span class="kc-wp-dot" data-step="5" title="Voltaje"></span>
+            <span class="kc-wp-dot" data-step="5" title="Gama"></span>
             <span class="kc-wp-line"></span>
-            <span class="kc-wp-dot" data-step="6" title="Capacidad"></span>
+            <span class="kc-wp-dot" data-step="6" title="Voltaje"></span>
             <span class="kc-wp-line"></span>
-            <span class="kc-wp-dot" data-step="7" title="Resumen"></span>
+            <span class="kc-wp-dot" data-step="7" title="Capacidad"></span>
+            <span class="kc-wp-line"></span>
+            <span class="kc-wp-dot" data-step="8" title="Resumen"></span>
         </div>
 
         <!-- Breadcrumb de selecciones activas -->
@@ -175,33 +230,51 @@
             </div>
         </div>
 
-        <!-- Paso 4: Gama -->
+        <!-- Paso 4: Tipo de placa (solo visible si hay >1 opción para la tecnología elegida) -->
         <div class="kc-wizard-step" id="kc-step-4" hidden>
             <div class="kc-wizard-header">
                 <span class="kc-step-num">4</span>
                 <div>
+                    <div class="kc-step-title">¿Qué tipo de placa?</div>
+                    <div class="kc-step-sub">Elige la construcción — o salta para ver todas</div>
+                </div>
+                <button class="kc-step-back" data-back="3">← Volver</button>
+            </div>
+            <div id="kc-plate-grid" class="kc-plate-grid">
+                <!-- renderizado dinámicamente por JS -->
+            </div>
+            <div class="kc-wizard-nav">
+                <button class="kc-btn kc-btn-ghost" id="kc-step4-plate-skip">Saltar (cualquier placa)</button>
+            </div>
+        </div>
+
+        <!-- Paso 5: Gama -->
+        <div class="kc-wizard-step" id="kc-step-5" hidden>
+            <div class="kc-wizard-header">
+                <span class="kc-step-num">5</span>
+                <div>
                     <div class="kc-step-title">¿Qué gama de batería?</div>
                     <div class="kc-step-sub">Elige la familia específica — o salta para ver todas</div>
                 </div>
-                <button class="kc-step-back" data-back="3">← Volver</button>
+                <button class="kc-step-back" data-back="4">← Volver</button>
             </div>
             <div id="kc-gamma-grid" class="kc-gamma-grid">
                 <!-- renderizado dinámicamente por JS -->
             </div>
             <div class="kc-wizard-nav">
-                <button class="kc-btn kc-btn-ghost" id="kc-step4-skip">Saltar (cualquier gama)</button>
+                <button class="kc-btn kc-btn-ghost" id="kc-step5-skip">Saltar (cualquier gama)</button>
             </div>
         </div>
 
-        <!-- Paso 5: Voltaje -->
-        <div class="kc-wizard-step" id="kc-step-5" hidden>
+        <!-- Paso 6: Voltaje -->
+        <div class="kc-wizard-step" id="kc-step-6" hidden>
             <div class="kc-wizard-header">
-                <span class="kc-step-num">5</span>
+                <span class="kc-step-num">6</span>
                 <div>
                     <div class="kc-step-title">¿Qué voltaje nominal?</div>
                     <div class="kc-step-sub">Haz clic para seleccionar — «Cualquiera» salta este paso</div>
                 </div>
-                <button class="kc-step-back" data-back="4">← Volver</button>
+                <button class="kc-step-back" data-back="5">← Volver</button>
             </div>
             <div class="kc-volt-pills" id="kc-wizard-volt-pills">
                 <button class="kc-volt-pill kc-pill-any" data-v="">Cualquiera →</button>
@@ -217,15 +290,15 @@
             </div>
         </div>
 
-        <!-- Paso 6: Capacidad -->
-        <div class="kc-wizard-step" id="kc-step-6" hidden>
+        <!-- Paso 7: Capacidad -->
+        <div class="kc-wizard-step" id="kc-step-7" hidden>
             <div class="kc-wizard-header">
-                <span class="kc-step-num">6</span>
+                <span class="kc-step-num">7</span>
                 <div>
                     <div class="kc-step-title">¿Qué capacidad necesitas?</div>
                     <div class="kc-step-sub">Opcional — en amperios-hora (Ah)</div>
                 </div>
-                <button class="kc-step-back" data-back="5">← Volver</button>
+                <button class="kc-step-back" data-back="6">← Volver</button>
             </div>
             <div class="kc-spec-block">
                 <div class="kc-cap-row">
@@ -248,23 +321,23 @@
                 </div>
             </div>
             <div class="kc-wizard-actions">
-                <button id="kc-step6-next" class="kc-btn kc-btn-primary kc-btn-lg">
+                <button id="kc-step7-next" class="kc-btn kc-btn-primary kc-btn-lg">
                     Siguiente: Ver resumen →
                 </button>
-                <button id="kc-step6-skip" class="kc-btn kc-btn-ghost">Sin filtro de capacidad</button>
+                <button id="kc-step7-skip" class="kc-btn kc-btn-ghost">Sin filtro de capacidad</button>
                 <button id="kc-wizard-reset" class="kc-btn kc-btn-ghost">Empezar de nuevo</button>
             </div>
         </div>
 
-        <!-- Paso 7: Resumen y confirmación -->
-        <div class="kc-wizard-step" id="kc-step-7" hidden>
+        <!-- Paso 8: Resumen y confirmación -->
+        <div class="kc-wizard-step" id="kc-step-8" hidden>
             <div class="kc-wizard-header">
                 <span class="kc-step-num kc-step-done">✓</span>
                 <div>
                     <div class="kc-step-title">Resumen de tu búsqueda</div>
                     <div class="kc-step-sub">Revisa los filtros seleccionados antes de buscar</div>
                 </div>
-                <button class="kc-step-back" data-back="6">← Volver</button>
+                <button class="kc-step-back" data-back="7">← Volver</button>
             </div>
             <div id="kc-wizard-summary-content" class="kc-summary-table">
                 <!-- renderizado dinámicamente por JS -->
@@ -384,16 +457,24 @@
                 <label class="kc-filter-label" for="kc-application">Aplicación</label>
                 <select id="kc-application" class="kc-filter-input">
                     <option value="">Cualquiera</option>
-                    <option value="Solar">Energía solar</option>
-                    <option value="SAI">SAI / UPS</option>
                     <option value="Telecomunicaciones">Telecomunicaciones</option>
-                    <option value="Bicicletas">Bicicleta eléctrica</option>
-                    <option value="Vehículo eléctrico">Vehículo eléctrico</option>
-                    <option value="Industrial">Industrial</option>
-                    <option value="Náutico">Náutico / Marina</option>
-                    <option value="Caravana">Caravana / Autocaravana</option>
-                    <option value="Alarma">Alarma / Seguridad</option>
-                    <option value="Tracción">Tracción</option>
+                    <option value="SAI">SAI / UPS</option>
+                    <option value="Iluminación">Iluminación emergencia</option>
+                    <option value="Centrales">Centrales eléctricas</option>
+                    <option value="Alarma">Alarmas y seguridad</option>
+                    <option value="Náutico">Marítimo</option>
+                    <option value="Energías Renovables">Energías renovables</option>
+                    <option value="Solar">Solar</option>
+                    <option value="Eólica">Eólica</option>
+                    <option value="SmartGrid">Red inteligente / Smart grid</option>
+                    <option value="Almacenamiento">Almacenamiento doméstico</option>
+                    <option value="Híbrida">Energía híbrida</option>
+                    <option value="Ferroviario">Ferroviario</option>
+                    <option value="Bicicletas">Movilidad ligera</option>
+                    <option value="Tracción">Tracción industrial</option>
+                    <option value="TV Cable">TV por cable</option>
+                    <option value="Sanitario">Médico / Sanitario</option>
+                    <option value="Caravana">Autocaravanas / Camping</option>
                 </select>
             </div>
 

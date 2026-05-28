@@ -117,6 +117,10 @@ add_action( 'wp_enqueue_scripts', function () {
         KAISE_CATALOG_VERSION,
         true
     );
+    $api_url_raw  = get_option( 'kaise_catalog_api_url', '' );
+    $parsed       = parse_url( $api_url_raw );
+    $api_base     = ( $parsed['scheme'] ?? 'https' ) . '://' . ( $parsed['host'] ?? '' );
+
     wp_localize_script( 'kaise-catalog', 'KaiseCatalog', [
         'ajaxUrl'     => admin_url( 'admin-ajax.php' ),
         'nonce'       => wp_create_nonce( 'kaise_catalog' ),
@@ -124,6 +128,7 @@ add_action( 'wp_enqueue_scripts', function () {
         'hasAI'       => ! empty( $ai_key ),
         'showAI'      => true,
         'showFilters' => true,
+        'apiBase'     => $api_base,
     ] );
 } );
 
@@ -138,7 +143,11 @@ add_shortcode( 'kaise_catalog', function ( $atts ) {
 
     // Los assets ya están encolados globalmente.
     // Solo sobreescribimos perPage/showAI/showFilters si el shortcode los cambia.
-    $ai_key = get_option( 'kaise_catalog_gemini_key', '' );
+    $ai_key      = get_option( 'kaise_catalog_gemini_key', '' );
+    $api_url_raw = get_option( 'kaise_catalog_api_url', '' );
+    $parsed      = parse_url( $api_url_raw );
+    $api_base    = ( $parsed['scheme'] ?? 'https' ) . '://' . ( $parsed['host'] ?? '' );
+
     wp_localize_script( 'kaise-catalog', 'KaiseCatalog', [
         'ajaxUrl'     => admin_url( 'admin-ajax.php' ),
         'nonce'       => wp_create_nonce( 'kaise_catalog' ),
@@ -146,6 +155,7 @@ add_shortcode( 'kaise_catalog', function ( $atts ) {
         'hasAI'       => ! empty( $ai_key ),
         'showAI'      => $atts['show_ai'] === 'true',
         'showFilters' => $atts['show_filters'] === 'true',
+        'apiBase'     => $api_base,
     ] );
 
     ob_start();
@@ -288,13 +298,13 @@ add_action( 'wp_ajax_nopriv_kaise_get_category_detail', 'kaise_ajax_get_category
 function kaise_ajax_get_category_detail() {
     check_ajax_referer( 'kaise_catalog', 'nonce' );
 
-    $category_id = isset( $_POST['category_id'] ) ? absint( $_POST['category_id'] ) : 0;
-    if ( ! $category_id ) {
+    $category_id = isset( $_POST['category_id'] ) ? sanitize_text_field( wp_unslash( $_POST['category_id'] ) ) : '';
+    if ( empty( $category_id ) ) {
         wp_send_json_error( [ 'message' => 'category_id requerido' ] );
     }
 
-    $api_url  = rtrim( get_option( 'kaise_catalog_api_url', '' ), '/' );
-    $cache_key = 'kaise_cat_detail_' . $category_id;
+    $api_url   = rtrim( get_option( 'kaise_catalog_api_url', '' ), '/' );
+    $cache_key = 'kaise_cat_detail_' . md5( $category_id );
     $cached    = get_transient( $cache_key );
 
     if ( $cached !== false ) {
@@ -314,9 +324,36 @@ function kaise_ajax_get_category_detail() {
         wp_send_json_error( [ 'message' => $body['message'] ?? 'Error de la API' ] );
     }
 
+    $cat      = $body['data'] ?? $body;
+    $features = [];
+
+    // applications: "App1, App2, App3" → [{ type: 'application', label }]
+    if ( ! empty( $cat['applications'] ) ) {
+        foreach ( array_map( 'trim', explode( ',', $cat['applications'] ) ) as $app ) {
+            if ( $app !== '' ) {
+                $features[] = [ 'type' => 'application', 'label' => $app ];
+            }
+        }
+    }
+
+    // characteristics: "Char1. Char2." → [{ type: 'characteristic', label }]
+    if ( ! empty( $cat['characteristics'] ) ) {
+        foreach ( preg_split( '/[.\n]+/', $cat['characteristics'] ) as $char ) {
+            $char = trim( $char );
+            if ( $char !== '' ) {
+                $features[] = [ 'type' => 'characteristic', 'label' => $char ];
+            }
+        }
+    }
+
+    // Merge any pre-existing features array from API if present
+    if ( ! empty( $cat['features'] ) && is_array( $cat['features'] ) ) {
+        $features = array_merge( $features, $cat['features'] );
+    }
+
     $payload = [
-        'category' => $body['data']             ?? $body,
-        'features' => $body['data']['features'] ?? $body['features'] ?? [],
+        'category' => $cat,
+        'features' => $features,
     ];
 
     set_transient( $cache_key, $payload, HOUR_IN_SECONDS * 6 );

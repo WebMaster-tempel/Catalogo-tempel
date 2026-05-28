@@ -81,15 +81,30 @@
     Compat.logCompatibility = function (context, tech, plate, app, gamma) {
         var validGammas = Compat.computeValidGammas(tech, plate, app);
         var compatKey   = app ? (KC.APP_TO_COMPAT[app] || null) : null;
+
+        // Derive the API params that will be sent from these filters
+        var apiParams = { status: 'published' };
+        if (tech)  apiParams.technology = tech;
+        if (plate) apiParams.plate_type = plate;
+        if (app)   apiParams.application = app;
+        if (validGammas.length === 1) {
+            var catId = KC.GAMMA_TO_CATEGORY_ID && KC.GAMMA_TO_CATEGORY_ID[validGammas[0].id];
+            if (catId) apiParams['category_id (derivado)'] = catId;
+        }
+        var qsParts = Object.entries(apiParams).map(function (e) { return e[0] + '=' + e[1]; });
+        var qsPreview = '/api/v1/products?' + qsParts.join('&');
+
         console.group('🔋 Kaise Algorithm — ' + context);
         if (gamma) {
             console.log('Gamma seleccionada →', gamma, '| tech derivada:', tech, '| plate derivada:', plate);
         }
-        console.log('Filtros activos →  tech:', tech, '| plate:', plate, '| app:', app);
-        console.log('APP_TO_COMPAT key:', compatKey);
-        console.log('Gammas válidas (' + validGammas.length + '):', validGammas.map(function (g) { return g.id; }));
-        console.log('Techs disponibles:', Array.from(Compat.getAvailableTechs(plate, app)));
-        console.log('Placas disponibles:', Array.from(Compat.getAvailablePlates(tech, app)));
+        console.log('Filtros activos       →  tech:', tech, '| plate:', plate, '| app:', app);
+        console.log('APP_TO_COMPAT key     →', compatKey || '(sin restricción de compat)');
+        console.log('Gammas válidas (' + validGammas.length + ')  →', validGammas.map(function (g) { return g.id; }));
+        console.log('Techs disponibles     →', Array.from(Compat.getAvailableTechs(plate, app)));
+        console.log('Placas disponibles    →', Array.from(Compat.getAvailablePlates(tech, app)));
+        console.log('Params API derivados  →', apiParams);
+        console.log('Query preview         →', qsPreview);
         console.groupEnd();
     };
 
