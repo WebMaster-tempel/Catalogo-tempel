@@ -31,20 +31,15 @@ async function runMigrations() {
       if ((rows as any[]).length === 0) {
         const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf-8');
         console.log(`Executing migration: ${file}`);
+        // Execute each statement individually (mysql2 doesn't support multi-statement by default)
         const statements = sql
           .split(';')
-          .map((s) =>
-            s
-              .split('\n')
-              .filter((line) => !line.trim().startsWith('--'))
-              .join('\n')
-              .trim()
-          )
-          .filter((s) => s.length > 0);
+          .map((s) => s.trim())
+          .filter((s) => s.length > 0 && !s.startsWith('--'));
         for (const stmt of statements) {
-          await db.query(stmt);
+          await db.execute(stmt);
         }
-        await db.query('INSERT INTO _migrations (name) VALUES (?)', [file]);
+        await db.execute('INSERT INTO _migrations (name) VALUES (?)', [file]);
         console.log(`✓ ${file}`);
       } else {
         console.log(`⊘ ${file} (already executed)`);

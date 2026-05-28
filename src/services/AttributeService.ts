@@ -1,6 +1,7 @@
+import { DbPool } from '../database/connection';
 import { AttributeRepository } from '../repositories/AttributeRepository';
 import { Attribute } from '../types';
-import { DbPool } from '../database/connection';
+
 
 export class AttributeService {
   private attributeRepo: AttributeRepository;
