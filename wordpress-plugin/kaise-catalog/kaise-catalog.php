@@ -117,6 +117,10 @@ add_action( 'wp_enqueue_scripts', function () {
         KAISE_CATALOG_VERSION,
         true
     );
+    $api_url_raw  = get_option( 'kaise_catalog_api_url', '' );
+    $parsed       = parse_url( $api_url_raw );
+    $api_base     = ( $parsed['scheme'] ?? 'https' ) . '://' . ( $parsed['host'] ?? '' );
+
     wp_localize_script( 'kaise-catalog', 'KaiseCatalog', [
         'ajaxUrl'     => admin_url( 'admin-ajax.php' ),
         'nonce'       => wp_create_nonce( 'kaise_catalog' ),
@@ -124,6 +128,7 @@ add_action( 'wp_enqueue_scripts', function () {
         'hasAI'       => ! empty( $ai_key ),
         'showAI'      => true,
         'showFilters' => true,
+        'apiBase'     => $api_base,
     ] );
 } );
 
@@ -138,7 +143,11 @@ add_shortcode( 'kaise_catalog', function ( $atts ) {
 
     // Los assets ya están encolados globalmente.
     // Solo sobreescribimos perPage/showAI/showFilters si el shortcode los cambia.
-    $ai_key = get_option( 'kaise_catalog_gemini_key', '' );
+    $ai_key      = get_option( 'kaise_catalog_gemini_key', '' );
+    $api_url_raw = get_option( 'kaise_catalog_api_url', '' );
+    $parsed      = parse_url( $api_url_raw );
+    $api_base    = ( $parsed['scheme'] ?? 'https' ) . '://' . ( $parsed['host'] ?? '' );
+
     wp_localize_script( 'kaise-catalog', 'KaiseCatalog', [
         'ajaxUrl'     => admin_url( 'admin-ajax.php' ),
         'nonce'       => wp_create_nonce( 'kaise_catalog' ),
@@ -146,6 +155,7 @@ add_shortcode( 'kaise_catalog', function ( $atts ) {
         'hasAI'       => ! empty( $ai_key ),
         'showAI'      => $atts['show_ai'] === 'true',
         'showFilters' => $atts['show_filters'] === 'true',
+        'apiBase'     => $api_base,
     ] );
 
     ob_start();
@@ -279,6 +289,76 @@ function kaise_ajax_search_products() {
 
 add_action( 'wp_ajax_kaise_get_categories',        'kaise_ajax_get_categories' );
 add_action( 'wp_ajax_nopriv_kaise_get_categories', 'kaise_ajax_get_categories' );
+
+// ─── AJAX: detalle de categoría para modal ────────────────────────────────────
+
+add_action( 'wp_ajax_kaise_get_category_detail',        'kaise_ajax_get_category_detail' );
+add_action( 'wp_ajax_nopriv_kaise_get_category_detail', 'kaise_ajax_get_category_detail' );
+
+function kaise_ajax_get_category_detail() {
+    check_ajax_referer( 'kaise_catalog', 'nonce' );
+
+    $category_id = isset( $_POST['category_id'] ) ? sanitize_text_field( wp_unslash( $_POST['category_id'] ) ) : '';
+    if ( empty( $category_id ) ) {
+        wp_send_json_error( [ 'message' => 'category_id requerido' ] );
+    }
+
+    $api_url   = rtrim( get_option( 'kaise_catalog_api_url', '' ), '/' );
+    $cache_key = 'kaise_cat_detail_' . md5( $category_id );
+    $cached    = get_transient( $cache_key );
+
+    if ( $cached !== false ) {
+        wp_send_json_success( $cached );
+    }
+
+    $response = wp_remote_get( $api_url . '/categories/' . $category_id, [ 'timeout' => 30 ] );
+
+    if ( is_wp_error( $response ) ) {
+        wp_send_json_error( [ 'message' => $response->get_error_message() ] );
+    }
+
+    $code = wp_remote_retrieve_response_code( $response );
+    $body = json_decode( wp_remote_retrieve_body( $response ), true );
+
+    if ( $code !== 200 ) {
+        wp_send_json_error( [ 'message' => $body['message'] ?? 'Error de la API' ] );
+    }
+
+    $cat      = $body['data'] ?? $body;
+    $features = [];
+
+    // applications: "App1, App2, App3" → [{ type: 'application', label }]
+    if ( ! empty( $cat['applications'] ) ) {
+        foreach ( array_map( 'trim', explode( ',', $cat['applications'] ) ) as $app ) {
+            if ( $app !== '' ) {
+                $features[] = [ 'type' => 'application', 'label' => $app ];
+            }
+        }
+    }
+
+    // characteristics: "Char1. Char2." → [{ type: 'characteristic', label }]
+    if ( ! empty( $cat['characteristics'] ) ) {
+        foreach ( preg_split( '/[.\n]+/', $cat['characteristics'] ) as $char ) {
+            $char = trim( $char );
+            if ( $char !== '' ) {
+                $features[] = [ 'type' => 'characteristic', 'label' => $char ];
+            }
+        }
+    }
+
+    // Merge any pre-existing features array from API if present
+    if ( ! empty( $cat['features'] ) && is_array( $cat['features'] ) ) {
+        $features = array_merge( $features, $cat['features'] );
+    }
+
+    $payload = [
+        'category' => $cat,
+        'features' => $features,
+    ];
+
+    set_transient( $cache_key, $payload, HOUR_IN_SECONDS * 6 );
+    wp_send_json_success( $payload );
+}
 
 function kaise_ajax_get_categories() {
     check_ajax_referer( 'kaise_catalog', 'nonce' );

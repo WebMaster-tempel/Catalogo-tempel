@@ -286,15 +286,17 @@
     // ── Active filter chips ───────────────────────────────────────────────────
 
     const PARAM_LABELS = {
-        application:  'Aplicación',
-        technology:   'Tecnología',
-        voltage:      'Tensión',
-        capacity_min: 'Cap. mín.',
-        capacity_max: 'Cap. máx.',
-        plate_type:   'Placa',
-        eurobat:      'Eurobat',
-        search:       'Búsqueda',
-        category_id:  'Gama',
+        application:       'Aplicación',
+        technology:        'Tecnología',
+        voltage:           'Tensión',
+        'filters[voltage]':'Tensión',
+        capacity_min:      'Cap. mín.',
+        capacity_max:      'Cap. máx.',
+        plate_type:        'Placa',
+        eurobat:           'Eurobat',
+        search:            'Búsqueda',
+        category_id:       'Gama',
+        characteristics:   'Características',
     };
 
     function renderActiveFilters(params) {
@@ -310,7 +312,7 @@
                 if (k === 'technology' && window.KC && KC.TECH_DISPLAY && KC.TECH_DISPLAY[v]) {
                     display = KC.TECH_DISPLAY[v];
                 }
-                if (k === 'voltage' && v) {
+                if ((k === 'voltage' || k === 'filters[voltage]') && v) {
                     display = v + ' V';
                 }
                 return `<span class="kc-chip">${label}: <strong>${escHtml(String(display))}</strong><button class="kc-chip-remove" data-key="${escHtml(k)}" aria-label="Eliminar filtro">✕</button></span>`;
@@ -336,21 +338,45 @@
         const ws = KC.Wizard.state;
 
         const params = { status: 'published' };
-        if (ws.app)        params.application  = ws.app;
-        if (ws.tech)       params.technology    = ws.tech;
-        if (ws.volt)       params.voltage       = ws.volt;
-        if (ws.categoryId) params.category_id   = ws.categoryId;
-        if (ws.capMin)     params.capacity_min  = ws.capMin;
-        if (ws.capMax)     params.capacity_max  = ws.capMax;
+        if (ws.tech)   params.technology   = ws.tech;
+        // R8: LiFePO4 voltages are decimals (12.8/25.6/51.2) — exact JSONB match avoids DECIMAL cast bug
+        if (ws.volt) {
+            if (ws.tech === 'LiFePO4') {
+                params['filters[voltage]'] = ws.volt;
+            } else {
+                params.voltage = ws.volt;
+            }
+        }
+        if (ws.categoryId) {
+            params.category_id = ws.categoryId;
+        } else if (!ws.tech && ws.app) {
+            // Send application only when no technology/gamma — c.applications is free text
+            // and conflicts with tech/category_id filters (e.g. Solar GEL stores 'Energías renovables' not 'Solar')
+            params.application = ws.app;
+        }
+        if (ws.capMin)  params.capacity_min  = ws.capMin;
+        if (ws.capMax)  params.capacity_max  = ws.capMax;
 
-        // Display version: show human-readable gamma name instead of numeric ID
+        // Display version: human-readable gamma + characteristics shown as chip
         const displayParams = Object.assign({}, params);
         if (ws.gamma && ws.categoryId) {
             const lbl = KC.GAMMA_LABELS[ws.gamma];
             if (lbl) displayParams.category_id = lbl.name;
         }
+        if (ws.app && !params.application) {
+            // App was used in wizard steps but not sent to API — show it in chips only
+            displayParams.application = ws.app;
+        }
+        if (ws.characteristics && ws.characteristics.length > 0) {
+            displayParams.characteristics = ws.characteristics
+                .map(function (c) { return KC.CHAR_LABELS[c] || c; }).join(', ');
+        }
 
         state.page = 1;
+        console.group('🧙 Wizard — Búsqueda lanzada');
+        console.log('Estado wizard:', { app: ws.app, tech: ws.tech, gamma: ws.gamma, volt: ws.volt, capMin: ws.capMin, capMax: ws.capMax });
+        console.log('Params finales a API:', params);
+        console.groupEnd();
         renderActiveFilters(displayParams);
         doSearch(params);
     }
@@ -408,6 +434,9 @@
     function handleFilterSearch() {
         const params = collectFilterParams();
         state.page = 1;
+        console.group('🔧 Filtros Técnicos — Búsqueda lanzada');
+        console.log('Params recogidos del formulario:', params);
+        console.groupEnd();
         renderActiveFilters(params);
         doSearch(params);
     }
@@ -461,16 +490,31 @@
 
         const fetchParams = Object.assign({}, state.params, { page: 1, per_page: 100 });
 
+        // Log exact request
+        const apiParams = Object.assign({}, fetchParams);
+        delete apiParams.action;
+        delete apiParams.nonce;
+        const qs = Object.entries(apiParams)
+            .filter(function (e) { return e[1] !== '' && e[1] != null; })
+            .map(function (e) { return encodeURIComponent(e[0]) + '=' + encodeURIComponent(e[1]); })
+            .join('&');
+        console.group('📤 Kaise API — Request');
+        console.log('Params enviados:', apiParams);
+        console.log('GET /api/v1/products?' + qs);
+        console.groupEnd();
+
         $.ajax({
             url:    KaiseCatalog.ajaxUrl,
             method: 'POST',
             data:   Object.assign({ action: 'kaise_search_products', nonce: KaiseCatalog.nonce }, fetchParams),
             success: function (res) {
                 if (!res.success) {
+                    console.warn('📥 Kaise API — Error:', res.data?.message);
                     showStatus('error', res.data?.message || 'Error al obtener productos.');
                     return;
                 }
                 if (!res.data) {
+                    console.warn('📥 Kaise API — Sin datos en respuesta');
                     showStatus('error', 'La API no responde. Comprueba que el servidor está activo y la URL configurada es correcta.');
                     return;
                 }
@@ -479,13 +523,29 @@
                 const pages = meta.total_pages || 1;
                 allResults  = res.data.data || [];
 
+                // Log exact response
+                const gammasEnResp = [...new Set(allResults.map(function (p) {
+                    return p.categories && p.categories[0] ? p.categories[0].name : null;
+                }).filter(Boolean))];
+                console.group('📥 Kaise API — Response (pág 1)');
+                console.log('Total en BD:', total, '| Páginas:', pages, '| Recibidos ahora:', allResults.length);
+                console.log('Gammas en respuesta:', gammasEnResp);
+                if (allResults.length) {
+                    console.log('Rango capacidad:', allResults.map(function (p) {
+                        var c = p.attributes_json;
+                        return c ? (p.name + ' ' + (c.voltage || '?') + 'V/' + (c.capacity || c.capacity_nominal_10h || '?') + 'Ah') : p.name;
+                    }));
+                }
+                console.groupEnd();
+
                 if (total > 100 && pages > 1) {
                     fetchRemainingPages(fetchParams, pages, total);
                 } else {
                     renderLocalResults();
                 }
             },
-            error: function () {
+            error: function (xhr) {
+                console.error('📥 Kaise API — Error HTTP:', xhr.status, xhr.statusText);
                 showStatus('error', 'No se pudo conectar con la API del catálogo.');
             },
         });
@@ -534,9 +594,19 @@
         $status.hide().removeClass('is-loading is-error is-empty');
 
         if (!products.length) {
+            console.warn('🖥 Render — Sin resultados. Params activos:', state.params);
             showStatus('empty', '🔍 Sin resultados. Prueba con otros filtros o amplía el rango de capacidad.');
             return;
         }
+
+        // Log what's being rendered
+        console.group('🖥 Render — Página ' + state.page + '/' + pages);
+        console.log('Mostrando ' + products.length + ' de ' + total + ' productos (todos cargados: ' + allResults.length + ')');
+        console.log('Productos en pantalla:', products.map(function (p) {
+            var c = p.attributes_json || {};
+            return p.name + ' [' + (c.voltage || '?') + 'V, ' + (c.capacity || c.capacity_nominal_10h || '?') + 'Ah]';
+        }));
+        console.groupEnd();
 
         $resultCount.html(`<strong>${total}</strong> producto${total !== 1 ? 's' : ''} encontrado${total !== 1 ? 's' : ''}`);
 
@@ -569,6 +639,9 @@
         const base = (KaiseCatalog.apiBase || '').replace(/\/$/, '');
         if (base && url.match(/^https?:\/\/localhost(:\d+)?/)) {
             return url.replace(/^https?:\/\/localhost(:\d+)?/, base);
+        }
+        if (base && url.startsWith('/')) {
+            return base + url;
         }
         return url;
     }

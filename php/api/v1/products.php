@@ -27,6 +27,92 @@ function handleProducts(array $parts): void {
     notFound();
 }
 
+// ─── NORMALIZATION ───────────────────────────────────────────────────────────
+
+/**
+ * Normalize a technology string to its canonical DB value.
+ * Case-insensitive. Accepts abbreviations and alternate spellings.
+ */
+function normalizeTechnology(string $raw): string {
+    $map = [
+        'vrla-agm'      => 'VRLA-AGM',
+        'vrla agm'      => 'VRLA-AGM',
+        'agm'           => 'VRLA-AGM',
+        'vrla-gel'      => 'VRLA-GEL',
+        'vrla gel'      => 'VRLA-GEL',
+        'gel'           => 'VRLA-GEL',
+        'lifepo4'       => 'LiFePO4',
+        'lfp'           => 'LiFePO4',
+        'litio'         => 'LiFePO4',
+        'lead carbon'   => 'Lead Carbon',
+        'lead-carbon'   => 'Lead Carbon',
+        'plomo carbono' => 'Lead Carbon',
+        'plomo-carbono' => 'Lead Carbon',
+    ];
+    return $map[strtolower(trim($raw))] ?? $raw;
+}
+
+/**
+ * Normalize a plate_type string to the list of possible DB values to match.
+ * Returns multiple variants because the DB may store either the pre-migration
+ * value ('Flat') or the post-migration value ('Plana') depending on when
+ * migration 021 was applied. Using OR covers both states.
+ *
+ * @return string[]
+ */
+function normalizePlateType(string $raw): array {
+    $map = [
+        'plana'      => ['Plana', 'Flat'],
+        'flat'       => ['Plana', 'Flat'],
+        'prismatic'  => ['Prismática', 'Prismatica', 'Prismatic'],
+        'prismatica' => ['Prismática', 'Prismatica', 'Prismatic'],
+        'prismática' => ['Prismática', 'Prismatica', 'Prismatic'],
+        'tubular'    => ['Tubular'],
+        'agm'        => ['AGM'],
+    ];
+    return $map[strtolower(trim($raw))] ?? [$raw];
+}
+
+/**
+ * Add a plate_type OR-condition to the WHERE clause.
+ * Handles multiple possible DB representations transparently.
+ */
+function addPlateTypeFilter(array &$where, array &$params, string $raw): void {
+    $variants = normalizePlateType($raw);
+    if (count($variants) === 1) {
+        $where[]  = 'c.plate_type LIKE ?';
+        $params[] = '%' . $variants[0] . '%';
+    } else {
+        $conditions = implode(' OR ', array_fill(0, count($variants), 'c.plate_type LIKE ?'));
+        $where[]    = '(' . $conditions . ')';
+        foreach ($variants as $v) {
+            $params[] = '%' . $v . '%';
+        }
+    }
+}
+
+// ─── APPLICATION ALIASES ─────────────────────────────────────────────────────
+
+const APPLICATION_ALIASES = [
+    'Movilidad'          => 'sillas de ruedas',
+    'movilidad'          => 'sillas de ruedas',
+    'Bicicletas'         => 'sillas de ruedas',
+    'Náutico'            => 'marítimo',
+    'nautico'            => 'marítimo',
+    'Maritimo'           => 'marítimo',
+    'marítimo'           => 'marítimo',
+    'Industrial'         => 'industrial',
+    'Tracción'           => 'industrial',
+    'traccion'           => 'industrial',
+    'SmartGrid'          => 'centrales',
+    'TV Cable'           => 'TV por cable',
+    'Energías Renovables'=> 'renovable',
+    'renovables'         => 'renovable',
+    'Solar'              => 'solar',
+    'Automocion'         => 'automoción',
+    'automocion'         => 'automoción',
+];
+
 // ─── LIST ────────────────────────────────────────────────────────────────────
 function listProducts(): void {
     $db      = getDb();
@@ -42,18 +128,47 @@ function listProducts(): void {
         $where[]  = '(p.name LIKE ? OR p.description LIKE ? OR c.name LIKE ? OR c.applications LIKE ? OR c.characteristics LIKE ? OR c.description LIKE ?)';
         $params   = array_merge($params, [$s, $s, $s, $s, $s, $s]);
     }
-    if (!empty($_GET['application']))    { $where[] = 'c.applications LIKE ?';  $params[] = '%' . $_GET['application']    . '%'; }
-    if (!empty($_GET['technology']))     { $where[] = 'c.technology LIKE ?';     $params[] = '%' . $_GET['technology']     . '%'; }
-    if (!empty($_GET['plate_type']))     { $where[] = 'c.plate_type LIKE ?';     $params[] = '%' . $_GET['plate_type']     . '%'; }
+
+    if (!empty($_GET['application'])) {
+        $app      = $_GET['application'];
+        $app      = APPLICATION_ALIASES[$app] ?? $app;
+        $where[]  = 'c.applications LIKE ?';
+        $params[] = '%' . $app . '%';
+    }
+
+    if (!empty($_GET['technology'])) {
+        $tech     = normalizeTechnology($_GET['technology']);
+        $where[]  = 'c.technology LIKE ?';
+        $params[] = '%' . $tech . '%';
+    }
+    if (!empty($_GET['plate_type'])) {
+        addPlateTypeFilter($where, $params, $_GET['plate_type']);
+    }
     if (isset($_GET['eurobat']))         { $where[] = 'c.eurobat = ?';           $params[] = (int)$_GET['eurobat']; }
     if (!empty($_GET['capacity_range'])) { $where[] = 'c.capacity_range LIKE ?'; $params[] = '%' . $_GET['capacity_range'] . '%'; }
     if (!empty($_GET['characteristics'])){ $where[] = 'c.characteristics LIKE ?';$params[] = '%' . $_GET['characteristics']. '%'; }
     if (!empty($_GET['product_type_id'])){ $where[] = 'p.product_type_id = ?';   $params[] = $_GET['product_type_id']; }
     if (!empty($_GET['status']))         { $where[] = 'p.status = ?';            $params[] = $_GET['status']; }
     if (!empty($_GET['category_id']))    { $where[] = 'pc.category_id = ?';      $params[] = $_GET['category_id']; }
-    if (isset($_GET['capacity_min']))    { $where[] = 'CAST(JSON_UNQUOTE(JSON_EXTRACT(pav.attributes_json,"$.capacity")) AS DECIMAL) >= ?'; $params[] = (float)$_GET['capacity_min']; }
-    if (isset($_GET['capacity_max']))    { $where[] = 'CAST(JSON_UNQUOTE(JSON_EXTRACT(pav.attributes_json,"$.capacity")) AS DECIMAL) <= ?'; $params[] = (float)$_GET['capacity_max']; }
-    if (isset($_GET['voltage']))         { $where[] = 'CAST(JSON_UNQUOTE(JSON_EXTRACT(pav.attributes_json,"$.voltage"))  AS DECIMAL) = ?';  $params[] = (float)$_GET['voltage']; }
+    // capacity: COALESCE covers EV gamma which stores capacity in $.capacity_nominal_10h
+    if (isset($_GET['capacity_min']))    {
+        $where[]  = 'COALESCE(CAST(JSON_UNQUOTE(JSON_EXTRACT(pav.attributes_json,"$.capacity")) AS DECIMAL(12,4)), CAST(JSON_UNQUOTE(JSON_EXTRACT(pav.attributes_json,"$.capacity_nominal_10h")) AS DECIMAL(12,4))) >= ?';
+        $params[] = (float)$_GET['capacity_min'];
+    }
+    if (isset($_GET['capacity_max']))    {
+        $where[]  = 'COALESCE(CAST(JSON_UNQUOTE(JSON_EXTRACT(pav.attributes_json,"$.capacity")) AS DECIMAL(12,4)), CAST(JSON_UNQUOTE(JSON_EXTRACT(pav.attributes_json,"$.capacity_nominal_10h")) AS DECIMAL(12,4))) <= ?';
+        $params[] = (float)$_GET['capacity_max'];
+    }
+    // voltage: integer cast (whole-number voltages 2/6/8/12/24/48)
+    if (isset($_GET['voltage']))         { $where[] = 'CAST(JSON_UNQUOTE(JSON_EXTRACT(pav.attributes_json,"$.voltage")) AS DECIMAL(10,4)) = ?'; $params[] = (float)$_GET['voltage']; }
+    // filters[campo]=valor: exact JSON string match — used for decimal voltages (LiFePO4: 12.8/25.6/51.2)
+    if (!empty($_GET['filters']) && is_array($_GET['filters'])) {
+        foreach ($_GET['filters'] as $campo => $valor) {
+            $campo    = preg_replace('/[^a-zA-Z0-9_]/', '', $campo);
+            $where[]  = 'JSON_UNQUOTE(JSON_EXTRACT(pav.attributes_json, "$.' . $campo . '")) = ?';
+            $params[] = (string)$valor;
+        }
+    }
 
     $whereSQL = $where ? 'WHERE ' . implode(' AND ', $where) : '';
 
@@ -231,6 +346,15 @@ function addMedia(string $id): void {
     $db->prepare(
         'INSERT INTO media (id, product_id, type, url, title, `order`) VALUES (?, ?, ?, ?, ?, ?)'
     )->execute([$mid, $id, $b['type'] ?? 'image', $b['url'] ?? '', $b['title'] ?? null, $b['order'] ?? 0]);
+
+    $product = $db->prepare('SELECT main_image_id FROM products WHERE id = ?');
+    $product->execute([$id]);
+    $row = $product->fetch();
+    if ($row && $row['main_image_id'] === null) {
+        $db->prepare('UPDATE products SET main_image_id = ?, updated_at = ? WHERE id = ?')
+           ->execute([$mid, date('Y-m-d H:i:s'), $id]);
+    }
+
     $stmt = $db->prepare('SELECT id, type, url, title, `order` FROM media WHERE id = ?');
     $stmt->execute([$mid]);
     jsonOut(['data' => $stmt->fetch()], 201);
