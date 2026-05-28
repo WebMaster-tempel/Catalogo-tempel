@@ -24,9 +24,9 @@ define('ALLOWED_ORIGINS', [
     'https://www.tempelgroup.com',
     'https://tempelgroup.com',
     'https://kaise.es',
-    'https://catalogo.tempelgroup.com/',
-    'https://desarrollo.tempelgroup.com/'
-    // Desarrollo local (eliminar en producción):
-    'http://localhost:5173',
-    'http://localhost:3000',
+    'https://catalogo.tempelgroup.com',
+    'https://desarrollo.tempelgroup.com',
+    // Desarrollo local — descomentar solo en entorno local, nunca subir activos a producción:
+    // 'http://localhost:5173',
+    // 'http://localhost:3000',
 ]);
